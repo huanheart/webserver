@@ -1,0 +1,12 @@
+#include<iostream>
+
+using namespace std;
+
+const int N=110;
+
+int main()
+{
+
+    cout<<1<<endl; //这个时这样的
+    return 0;
+}
