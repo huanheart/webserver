@@ -2,18 +2,18 @@
 CXXFLAGS = -w
 
 #变量定义
-objects =main.o log.o sql_connection_pool.o lst_timer.o http_conn.o config.o webserver.o
+objects =main.o log/log.o  cglmysql/sql_connection_pool.o  timer/lst_timer.o   http/http_conn.o   config.o   webserver.o
 
-#最终目标文件
+#朢�终目标文仄1�7
 edit :$(objects)
 	g++ -o   webserver $(objects) -lmysqlclient  -g
 main.o : config.h
-log.o  : log.h block_queue.h
-sql_connection_pool.o : sql_connection_pool.h locker.h log.h
-lst_timer.o :lst_timer.h log.h http_conn.h
-http_conn.o :http_conn.h locker.h sql_connection_pool.h lst_timer.h log.h
-config.o : config.h webserver.h  threadpool.h  http_conn.h
-webserver.o : webserver.h lst_timer.h
+log.o  : log/log.h log/block_queue.h
+sql_connection_pool.o : cglmysql/sql_connection_pool.h lock/locker.h log/log.h
+lst_timer.o :timer/lst_timer.h log/log.h  http/http_conn.h
+http_conn.o :http/http_conn.h  lock/locker.h  cglmysql/sql_connection_pool.h  timer/lst_timer.h  log/log.h
+config.o : config.h webserver.h  threadpool/threadpool.h  http/http_conn.h
+webserver.o : webserver.h timer/lst_timer.h
 
 
 .PHONY : clean
