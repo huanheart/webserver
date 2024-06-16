@@ -26,7 +26,6 @@ void http_conn::initmysql_result(Connection_pool *conn_pool)
     if(mysql_query(mysql,"select username,passwd from user") ) //如果返回非0，说明内部错误
     {
         LOG_ERROR("select error:%s\n",mysql_error(mysql) );
-        std::cout<<"fvhgh"<<std::endl;
     }
 
     //从表中检索完整的结果集：
@@ -47,7 +46,7 @@ void http_conn::initmysql_result(Connection_pool *conn_pool)
 
 }
 
-//对其设置为非阻塞
+//对其文件描述符设置为非阻塞
 int setnonblocking(int fd)
 {
     int old_option=fcntl(fd,F_GETFL);
@@ -172,25 +171,30 @@ void http_conn::init()
 http_conn::LINE_STATUS http_conn::parse_line() //用于解析不同的状态
 {
     char temp;
-    if(temp=='\r')
+    for (; m_checked_idx < m_read_idx; ++m_checked_idx)
     {
-        if( (m_checked_idx+1) ==m_read_idx) 
-            return LINE_STATUS::LINE_OPEN;
-        else if(m_read_buf[m_checked_idx+1]=='\n')
+        temp = m_read_buf[m_checked_idx];
+        if(temp=='\r')
         {
-            m_read_buf[m_checked_idx++]='\0';
-            m_read_buf[m_checked_idx++]='\0';
-            return LINE_STATUS::LINE_OK;
+            if( (m_checked_idx+1) ==m_read_idx) 
+                return LINE_OPEN;
+            else if(m_read_buf[m_checked_idx+1]=='\n')
+            {
+                m_read_buf[m_checked_idx++]='\0';
+                m_read_buf[m_checked_idx++]='\0';
+                return LINE_OK;
+            }
+        }else if(temp=='\n'){
+            if(m_checked_idx>1&&m_read_buf[m_checked_idx-1] =='\r')  //-1和+1的目的是防止溢出
+            {
+                m_read_buf[m_checked_idx-1]='\0';
+                m_read_buf[m_checked_idx++]='\0';
+                return LINE_OK;        
+            }
+            return  LINE_BAD;
         }
-    }else {
-        if(m_checked_idx>1&&m_read_buf[m_checked_idx-1] =='\r')  //-1和+1的目的是防止溢出
-        {
-            m_read_buf[m_checked_idx-1]='\0';
-            m_read_buf[m_checked_idx++]='\0';
-            return LINE_STATUS::LINE_OK;        
-        }
-        return  LINE_STATUS::LINE_BAD;
     }
+    std::cout<<"hksahdkahskd  "<<std::endl;
     return LINE_OPEN;
 
 }
@@ -204,7 +208,7 @@ bool http_conn::read_once()
         return false;
     int bytes_read = 0;
 
-    //LT读取数据
+    //LT读取数据(水平触发)
     if(m_TRIGMode==0)
     {
         bytes_read=recv(m_sockfd,m_read_buf+m_read_idx,READ_BUFFER_SIZE-m_read_idx,0);
@@ -231,9 +235,9 @@ bool http_conn::read_once()
                 return false;
             }
             m_read_idx+=bytes_read;
-            return true;
+           
         }   
-
+        return true;
     }
 
 }
@@ -243,27 +247,27 @@ bool http_conn::read_once()
 //请求行的意思详情看语雀笔记
 http_conn::HTTP_CODE    http_conn::parse_request_line(char* text)
 {
-    std::cout<<"test 为  "<<text<<std::endl;
+    std::cout<<"test wei  "<<text<<std::endl;
     m_url=strpbrk(text," \t"); //返回出现在这个第二个字符串集合中的第一个属于字符串1的下标的后面的内容
     std::cout<<"url 为  "<<m_url<<std::endl;
     if(!m_url)
     {   
         std::cout<<"cuowu 1"<<std::endl;
-        return HTTP_CODE::BAD_REQUEST;
+        return BAD_REQUEST;
     }
     *m_url++='\0';
     char * method=text;
 
     if(strcasecmp(method,"GET")==0) //用于比较的函数
-        m_method=METHOD::GET;
+        m_method=GET;
     else if(strcasecmp(method,"POST")==0)
     {
-        m_method=METHOD::POST;
-        cgi=1; //这个cgi是用来干嘛的？
+        m_method=POST;
+        cgi=1; //这个cgi是用来干嘛的？是否启用的post
     }
     else {
         std::cout<<"cuowu 2"<<std::endl;
-        return HTTP_CODE::BAD_REQUEST; ///如果都没有这两个请求，这个项目似乎只处理了get和post
+        return BAD_REQUEST; ///如果都没有这两个请求，这个项目似乎只处理了get和post
     }
 
     m_url+=strspn(m_url," \t" );  //具体看语雀
@@ -273,36 +277,25 @@ http_conn::HTTP_CODE    http_conn::parse_request_line(char* text)
     m_version=strpbrk(m_url," \t");
     if (!m_version){
         std::cout<<"cuowu 3"<<std::endl;
-        return HTTP_CODE::BAD_REQUEST;
+        return BAD_REQUEST;
     }
     *m_version++ = '\0';
     
-
-
-
-
-
     m_version += strspn(m_version, " \t");
     std::cout<<m_version<<"  _ding_wei"<<std::endl;
     std::cout<<" c huxian_    "<<std::endl;
-    // if (strcasecmp(m_version, "HTTP/1.1") != 0) //如果不相等
-    // {
-    //     std::cout<<"cuowu 4"<<std::endl;
-    //     return HTTP_CODE::BAD_REQUEST;
-    // }
-    std::string temp="HTTP/1.1";
-    for(int i=0;i<temp.size();i++){
-        if(temp[i]!=m_version[i]){
-            std::cout<<"cuowu 4"<<std::endl;
-            return HTTP_CODE::BAD_REQUEST;
-        }
+    if (strcasecmp(m_version, "HTTP/1.1") != 0) //如果不相等
+    {
+        std::cout<<"cuowu 4"<<std::endl;
+        return HTTP_CODE::BAD_REQUEST;
     }
-
-
-
-
-
-
+    // std::string temp="HTTP/1.1";
+    // for(int i=0;i<temp.size();i++){
+    //     if(temp[i]!=m_version[i]){
+    //         std::cout<<"cuowu 4"<<std::endl;
+    //         return BAD_REQUEST;
+    //     }
+    // }
     if(strncasecmp(m_url,"http://",7)==0) //判断两个字符串的前7个字符是否相等
     {
         m_url+=7;
@@ -319,15 +312,15 @@ http_conn::HTTP_CODE    http_conn::parse_request_line(char* text)
     if(!m_url || m_url[0]!='/' ) //说明出现了错误了，可能后面没有内容了，所以没有截取到'/'
     {
         std::cout<<"cuowu 5"<<std::endl;
-        return HTTP_CODE::BAD_REQUEST;
+        return BAD_REQUEST;
     }
     //当url为/时，显示判断界面         为什么此时要
     std::cout<<"shishdsadsad    "<<m_url<<std::endl;
     if(strlen(m_url)==1)
         strcat(m_url,"judge.html");
-    m_check_state= CHECK_STATE::CHECK_STATE_HEADER;
+    m_check_state= CHECK_STATE_HEADER;
      std::cout<<"shishdsadsad    "<<m_url<<std::endl;
-    return HTTP_CODE::NO_REQUEST;
+    return NO_REQUEST;
 }
 
 //解析http请求的一个头部信息
@@ -338,10 +331,10 @@ http_conn::HTTP_CODE  http_conn::parse_headers(char *text)
     {
         if(m_content_length!=0)
         {
-            m_check_state=CHECK_STATE::CHECK_STATE_CONTENT;
-            return HTTP_CODE::NO_REQUEST;
+            m_check_state=CHECK_STATE_CONTENT;
+            return NO_REQUEST;
         }
-        return HTTP_CODE::GET_REQUEST;
+        return GET_REQUEST;
     }
     else if(strncasecmp(text,"Connection:",11)==0) 
     {
@@ -358,7 +351,7 @@ http_conn::HTTP_CODE  http_conn::parse_headers(char *text)
         text+=strspn(text," \t");
         m_content_length=atol(text); //获取这个字符串的长度
     }
-    else if(strncasecmp(text,"Host",5)==0 )
+    else if(strncasecmp(text,"Host:",5)==0 )
     {
         text+=5;
         text+=strspn(text," \t"); //重置这里为开头
@@ -368,7 +361,8 @@ http_conn::HTTP_CODE  http_conn::parse_headers(char *text)
     {
         LOG_INFO("oop!unknow header: %s", text);
     }
-    return HTTP_CODE::NO_REQUEST;
+    
+    return NO_REQUEST;
 }
 
 
@@ -380,61 +374,61 @@ http_conn::HTTP_CODE http_conn::parse_content(char * text)
         text[m_content_length]='\0';
         //post请求中最后为输入的用户名和密码
         m_string=text;
-        return HTTP_CODE::GET_REQUEST;
+        return GET_REQUEST;
     }
-    return HTTP_CODE::NO_REQUEST;
+    return NO_REQUEST;
 }
 
 http_conn::HTTP_CODE  http_conn::process_read()
 {
-    LINE_STATUS line_status=LINE_STATUS::LINE_OK;
-    HTTP_CODE ret=HTTP_CODE::NO_REQUEST;
+    LINE_STATUS line_status=LINE_OK;
+    HTTP_CODE ret=NO_REQUEST;
     char * text=0;
     //判断请求的内容
     std::cout<<"process_read_now"<<std::endl;
-    while(m_check_state==CHECK_STATE::CHECK_STATE_CONTENT &&line_status==LINE_STATUS::LINE_OK
-          || (line_status==parse_line())==LINE_STATUS::LINE_OK) //分析当前行状态是否和此时设置的line_status状态一致
+    while( (m_check_state==CHECK_STATE_CONTENT &&line_status==LINE_OK)
+          || ( (line_status=parse_line() )==LINE_OK) ) //分析当前行状态是否和此时设置的line_status状态一致
     {
         std::cout<<"process_read_now_now"<<std::endl;
         text=get_line();
 
         m_start_line=m_checked_idx;
         LOG_INFO("%s",text);
-        std::cout<<static_cast<int>(m_check_state)<<std::endl;
+        std::cout<<text<<"   bushi laodi"<<std::endl;
+        std::cout<<m_check_state<<"  shu chu ba"<<std::endl;
         switch (m_check_state)
         {
-            case CHECK_STATE::CHECK_STATE_REQUESTLINE:
+            case CHECK_STATE_REQUESTLINE:
             {
                 ret=parse_request_line(text);
-                if(ret==HTTP_CODE::BAD_REQUEST){
+                if(ret==BAD_REQUEST){
                     std::cout<<"使得bad了"<<std::endl;
-                    return HTTP_CODE::BAD_REQUEST;
+                    return BAD_REQUEST;
                 }
                 break;
             }
-            case CHECK_STATE::CHECK_STATE_HEADER:
+            case CHECK_STATE_HEADER:
             {
                 ret=parse_headers(text);
-                if(ret==HTTP_CODE::BAD_REQUEST)
-                    return HTTP_CODE::BAD_REQUEST;
-                else if(ret==HTTP_CODE::GET_REQUEST)
+                if(ret==BAD_REQUEST)
+                    return BAD_REQUEST;
+                else if(ret==GET_REQUEST)
                     return do_request();
                 break;
             }
-            case CHECK_STATE::CHECK_STATE_CONTENT :
+            case CHECK_STATE_CONTENT :
             {
                 ret=parse_content(text);
-                if(ret==HTTP_CODE::GET_REQUEST) //说明是一个完整的GET请求
+                if(ret==GET_REQUEST) //说明是一个完整的GET请求
                     return do_request();
-                line_status=LINE_STATUS::LINE_OPEN;
+                line_status=LINE_OPEN;
                 break;
             }
             default:
-                   std::cout<<"nei_bu_cuo_wu_fu_wu_duan"<<std::endl;
-                return HTTP_CODE::INTERNAL_ERROR; //服务器内部错误
+                return INTERNAL_ERROR; //服务器内部错误
 
         }
-        return HTTP_CODE::NO_REQUEST;
+        return NO_REQUEST;
 
     }
 
@@ -462,6 +456,7 @@ http_conn::HTTP_CODE http_conn::do_request()
       //将用户名和密码提取出来
       //user=123&passwd=123 //难道这个用户名和密码一直都是这玩意吗？
     char name[100],password[100];
+    
     {
         int i;
         for(i=5;m_string[i]!='&';++i)
@@ -558,22 +553,22 @@ http_conn::HTTP_CODE http_conn::do_request()
     if(stat(m_real_file,&m_file_stat)<0)  //从里面获取文件当前的信息
     {
         std::cout<<"meiyou ziyuan "<<std::endl;
-        return HTTP_CODE::NO_RESOURCE; //没有资源
+        return NO_RESOURCE; //没有资源
     }
     if(!(m_file_stat.st_mode)&S_IROTH) {
          std::cout<<"fang  wen jin zhi   "<<std::endl;
-        return HTTP_CODE::FORBIDDEN_REQUEST; //禁止请求的状态码
+        return FORBIDDEN_REQUEST; //禁止请求的状态码
     }
 
     if(S_ISDIR(m_file_stat.st_mode) )
-        return HTTP_CODE::BAD_REQUEST;
+        return BAD_REQUEST;
 
     int fd=open(m_real_file,O_RDONLY); //只读的方式打开这个文件，然后由于在linux下，返回一个文件描述符（这个文件就是要发送的文件了）
     
     m_file_address=(char*)mmap(0,m_file_stat.st_size,PROT_READ,MAP_PRIVATE,fd,0); //做映射，具体看语雀(这个和要传输的视频文件相关联的)
     close(fd);
     
-    return HTTP_CODE::FILE_REQUEST;
+    return FILE_REQUEST;
 
 }
 
@@ -591,7 +586,7 @@ void http_conn::unmap()
 bool http_conn::write()
 {
     int temp=0;
-
+    std::cout<<"jin ru write"<<std::endl;
     if(bytes_to_send==0) //发送字节数==0
     {
         modfd(m_epollfd,m_sockfd,EPOLLIN,m_TRIGMode); //重置epoll函数
@@ -615,7 +610,7 @@ bool http_conn::write()
         }
         bytes_have_send += temp; //写入的个数+
         bytes_to_send -= temp;   //待写的个数-
-        if(bytes_have_send>=m_iv->iov_len) //说明第一个的数据发送完了，然后开始对第二个进行操作
+        if(bytes_have_send>=m_iv[0].iov_len) //说明第一个的数据发送完了，然后开始对第二个进行操作
         {
             m_iv[0].iov_len=0;
             m_iv[1].iov_base=m_file_address+(bytes_have_send-m_write_idx);
@@ -712,7 +707,7 @@ bool http_conn::process_write(HTTP_CODE ret)
     std::cout<<"process_write"<<std::endl;
     switch(ret)
     {
-        case HTTP_CODE::INTERNAL_ERROR:
+        case INTERNAL_ERROR:
         {
             add_status_line(500,error_500_title); //
             add_headers(strlen(error_500_form) );
@@ -720,7 +715,7 @@ bool http_conn::process_write(HTTP_CODE ret)
                 return false;
             break;
         }
-        case HTTP_CODE::BAD_REQUEST:
+        case BAD_REQUEST:
         {
             add_status_line(404, error_404_title);
             add_headers(strlen(error_404_form));
@@ -728,7 +723,7 @@ bool http_conn::process_write(HTTP_CODE ret)
                 return false;
             break;
         }
-        case HTTP_CODE::FORBIDDEN_REQUEST:
+        case FORBIDDEN_REQUEST:
         {
             add_status_line(403, error_403_title);
             add_headers(strlen(error_403_form));
@@ -736,7 +731,7 @@ bool http_conn::process_write(HTTP_CODE ret)
                 return false;
             break;
         }
-        case HTTP_CODE::FILE_REQUEST:
+        case FILE_REQUEST:
         {
             add_status_line(200,ok_200_title);
             if(m_file_stat.st_size!=0) //首先检查文件大小是否为0
@@ -772,14 +767,19 @@ bool http_conn::process_write(HTTP_CODE ret)
 void http_conn::process()
 {
     HTTP_CODE read_ret=process_read();
- std::cout<<"process_read"<<std::endl;
-    if(read_ret==HTTP_CODE::NO_REQUEST)
+    std::cout<<"process_read"<<std::endl;
+    if(read_ret==NO_REQUEST)
     {
         std::cout<<"HTTP_CODE::NO_REQUEST"<<std::endl;
         modfd(m_epollfd,m_sockfd,EPOLLIN,m_TRIGMode);
         return ;
     }
-
+    bool write_ret = process_write(read_ret);
+    if (!write_ret)
+    {
+        close_conn();
+    }
+    modfd(m_epollfd, m_sockfd, EPOLLOUT, m_TRIGMode);
 }
 
 

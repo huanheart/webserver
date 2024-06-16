@@ -48,6 +48,9 @@ thread_pool<T>::thread_pool(int actor_model, Connection_pool *connPool, int thre
         throw std::exception();
     m_threads=new pthread_t[m_thread_number]; //线程池初始化
 
+    if (!m_threads)
+        throw std::exception();
+        
     for(int i=0;i<thread_number;++i) //thread_number默认是8
     {
         if(pthread_create(m_threads+i,nullptr,worker,this)!=0) //创建线程,放入道对应的m_threads+i的位置
@@ -153,6 +156,7 @@ void thread_pool<T>::run()
                 }
             }
             else {
+                std::cout<<" thread pool yi bu run request->write() "<<std::endl;
                 if(request->write() ) //写入的时候，需要判断是图片还是
                 {
                     request->improv=1;

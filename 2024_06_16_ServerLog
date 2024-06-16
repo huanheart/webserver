@@ -1,0 +1,118 @@
+2024-06-16 22:28:10.584041 [info]: deal with the client(192.168.1.8)
+2024-06-16 22:28:10.584229 [info]: adjust timer once
+2024-06-16 22:28:10.584387 [info]: GET / HTTP/1.1
+2024-06-16 22:28:12.867610 [info]: timer tick
+2024-06-16 22:28:17.868852 [info]: timer tick
+2024-06-16 22:28:22.869968 [info]: timer tick
+2024-06-16 22:28:27.871095 [info]: timer tick
+2024-06-16 22:28:28.899292 [info]: deal with the client(192.168.1.8)
+2024-06-16 22:28:28.899425 [info]: adjust timer once
+2024-06-16 22:28:28.899574 [info]: GET / HTTP/1.1
+2024-06-16 22:28:32.872259 [info]: timer tick
+2024-06-16 22:28:37.872395 [info]: timer tick
+2024-06-16 22:28:42.873030 [info]: timer tick
+2024-06-16 22:28:47.875133 [info]: timer tick
+2024-06-16 22:28:52.875430 [info]: timer tick
+2024-06-16 22:28:57.875957 [info]: timer tick
+2024-06-16 22:29:02.877168 [info]: timer tick
+2024-06-16 22:29:07.878587 [info]: timer tick
+2024-06-16 22:29:12.878990 [info]: timer tick
+2024-06-16 22:29:17.880512 [info]: timer tick
+2024-06-16 22:29:22.880774 [info]: timer tick
+2024-06-16 22:29:27.881519 [info]: timer tick
+2024-06-16 22:29:32.881956 [info]: timer tick
+2024-06-16 22:29:37.882446 [info]: timer tick
+2024-06-16 22:30:30.752212 [info]: deal with the client(192.168.1.8)
+2024-06-16 22:30:30.752331 [info]: adjust timer once
+2024-06-16 22:30:30.752521 [info]: GET / HTTP/1.1
+2024-06-16 22:30:31.225107 [info]: timer tick
+2024-06-16 22:30:36.225655 [info]: timer tick
+2024-06-16 22:30:41.226359 [info]: timer tick
+2024-06-16 22:30:46.227609 [info]: timer tick
+2024-06-16 22:30:46.249689 [info]: deal with the client(192.168.1.8)
+2024-06-16 22:30:46.249777 [info]: adjust timer once
+2024-06-16 22:30:46.249964 [info]: GET / HTTP/1.1
+2024-06-16 22:30:51.228090 [info]: timer tick
+2024-06-16 22:30:56.228691 [info]: timer tick
+2024-06-16 22:31:01.231023 [info]: timer tick
+2024-06-16 22:31:02.286940 [info]: deal with the client(192.168.1.8)
+2024-06-16 22:31:02.287039 [info]: adjust timer once
+2024-06-16 22:31:02.287188 [info]: GET / HTTP/1.1
+2024-06-16 22:31:06.231529 [info]: timer tick
+2024-06-16 22:31:11.232279 [info]: timer tick
+2024-06-16 22:31:16.232967 [info]: timer tick
+2024-06-16 22:31:21.235126 [info]: timer tick
+2024-06-16 22:31:21.237158 [info]: deal with the client(192.168.1.8)
+2024-06-16 22:31:21.237298 [info]: adjust timer once
+2024-06-16 22:31:21.237536 [info]: GET / HTTP/1.1
+2024-06-16 22:31:26.235466 [info]: timer tick
+2024-06-16 22:31:31.236510 [info]: timer tick
+2024-06-16 22:31:41.292376 [info]: deal with the client(192.168.1.8)
+2024-06-16 22:31:41.292508 [info]: adjust timer once
+2024-06-16 22:31:41.292723 [info]: GET / HTTP/1.1
+2024-06-16 22:31:41.554448 [info]: close fd 17
+2024-06-16 22:31:45.353343 [info]: timer tick
+2024-06-16 22:31:50.354292 [info]: timer tick
+2024-06-16 22:31:55.354859 [info]: timer tick
+2024-06-16 22:32:04.679818 [info]: deal with the client(192.168.1.8)
+2024-06-16 22:32:04.679913 [info]: adjust timer once
+2024-06-16 22:32:04.680023 [info]: GET / HTTP/1.1
+2024-06-16 22:32:05.645848 [info]: close fd 16
+2024-06-16 22:32:05.646971 [info]: deal with the client(192.168.1.8)
+2024-06-16 22:32:05.647234 [info]: GET / HTTP/1.1
+2024-06-16 22:32:48.661376 [info]: deal with the client(192.168.1.8)
+2024-06-16 22:32:48.661613 [info]: GET / HTTP/1.1
+2024-06-16 22:32:48.661758 [info]: adjust timer once
+2024-06-16 22:32:48.954605 [info]: timer tick
+2024-06-16 22:32:53.955794 [info]: timer tick
+2024-06-16 22:32:58.956234 [info]: timer tick
+2024-06-16 22:33:03.957120 [info]: timer tick
+2024-06-16 22:33:04.980857 [info]: deal with the client(192.168.1.8)
+2024-06-16 22:33:04.980947 [info]: adjust timer once
+2024-06-16 22:33:04.981076 [info]: GET / HTTP/1.1
+2024-06-16 22:33:06.665798 [info]: close fd 17
+2024-06-16 22:33:08.957390 [info]: timer tick
+2024-06-16 22:33:13.957977 [info]: timer tick
+2024-06-16 22:33:18.958278 [info]: timer tick
+2024-06-16 22:33:23.959135 [info]: timer tick
+2024-06-16 22:33:28.959385 [info]: timer tick
+2024-06-16 22:33:28.987097 [info]: deal with the client(192.168.1.8)
+2024-06-16 22:33:28.987211 [info]: adjust timer once
+2024-06-16 22:33:28.987419 [info]: GET / HTTP/1.1
+2024-06-16 22:33:33.960756 [info]: timer tick
+2024-06-16 22:33:38.961176 [info]: timer tick
+2024-06-16 22:33:43.961831 [info]: timer tick
+2024-06-16 22:33:48.962648 [info]: timer tick
+2024-06-16 22:33:53.963677 [info]: timer tick
+2024-06-16 22:34:09.276879 [info]: deal with the client(192.168.1.8)
+2024-06-16 22:34:09.277003 [info]: GET / HTTP/1.1
+2024-06-16 22:34:09.277062 [info]: adjust timer once
+2024-06-16 22:34:26.765629 [info]: deal with the client(192.168.1.8)
+2024-06-16 22:34:26.765735 [info]: adjust timer once
+2024-06-16 22:34:26.765882 [info]: GET / HTTP/1.1
+2024-06-16 22:35:29.592294 [info]: deal with the client(192.168.1.8)
+2024-06-16 22:35:29.592750 [info]: GET / HTTP/1.1
+2024-06-16 22:35:29.592826 [info]: adjust timer once
+2024-06-16 22:35:31.836365 [info]: close fd 17
+2024-06-16 22:35:47.902559 [info]: deal with the client(192.168.1.8)
+2024-06-16 22:35:47.902750 [info]: GET / HTTP/1.1
+2024-06-16 22:35:47.902808 [info]: adjust timer once
+2024-06-16 22:35:59.485090 [info]: deal with the client(192.168.1.8)
+2024-06-16 22:35:59.485240 [info]: adjust timer once
+2024-06-16 22:35:59.487876 [info]: GET / HTTP/1.1
+2024-06-16 22:36:01.869829 [info]: close fd 17
+2024-06-16 22:36:18.922858 [info]: deal with the client(192.168.1.8)
+2024-06-16 22:36:18.922932 [info]: adjust timer once
+2024-06-16 22:36:18.923142 [info]: GET / HTTP/1.1
+2024-06-16 22:36:21.887352 [info]: close fd 17
+2024-06-16 22:36:37.904971 [info]: deal with the client(192.168.1.8)
+2024-06-16 22:36:37.905077 [info]: adjust timer once
+2024-06-16 22:36:37.905681 [info]: GET / HTTP/1.1
+2024-06-16 22:36:57.928486 [info]: deal with the client(192.168.1.8)
+2024-06-16 22:36:57.928589 [info]: adjust timer once
+2024-06-16 22:36:57.928711 [info]: GET / HTTP/1.1
+2024-06-16 22:37:01.936936 [info]: close fd 17
+2024-06-16 22:40:47.403980 [info]: deal with the client(192.168.1.8)
+2024-06-16 22:40:47.404387 [info]: GET / HTTP/1.1
+2024-06-16 22:40:47.404487 [info]: adjust timer once
+2024-06-16 22:40:52.146362 [info]: close fd 17

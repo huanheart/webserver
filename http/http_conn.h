@@ -36,25 +36,25 @@ public:
     static const int FILENAME_LEN = 200;       // 文件名长度
     static const int READ_BUFFER_SIZE = 2048;  // 读入的缓冲区大小
     static const int WRITE_BUFFER_SIZE = 1024; // 写入的缓冲区大小
-    enum class METHOD
+    enum METHOD
     {
         GET = 0,
         POST,
         HEAD,
         PUT,
         DELETE,
-        TRACE, // trace
+        TRACE,
         OPTIONS,
         CONNECT,
         PATH
     };
-    enum class CHECK_STATE // 状态检查
+    enum CHECK_STATE
     {
-        CHECK_STATE_REQUESTLINE = 0, // 请求
+        CHECK_STATE_REQUESTLINE = 0,
         CHECK_STATE_HEADER,
         CHECK_STATE_CONTENT
     };
-    enum class HTTP_CODE
+    enum HTTP_CODE
     {
         NO_REQUEST,
         GET_REQUEST,
@@ -65,7 +65,6 @@ public:
         INTERNAL_ERROR,
         CLOSED_CONNECTION
     };
-
     enum LINE_STATUS
     {
         LINE_OK = 0,

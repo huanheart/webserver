@@ -102,16 +102,18 @@ public:
 
 	int get_size()
 	{
+        int tmp=0;
 		m_mutex.lock();
-		int tmp = m_size;
+		tmp = m_size;
 		m_mutex.unlock();
 		return tmp;
 	}
 
 	int get_m_capacity()
 	{
+        int tmp=0;
 		m_mutex.lock();
-		int tmp = m_capacity;
+		tmp = m_capacity;
 		m_mutex.unlock();
 		return tmp;
 	}
@@ -175,7 +177,6 @@ public:
             }
 
         }
-        //分析一下这个，这里不懂为什么要有这个，此时都到达这里了，怎么可能会<=0呢？
         if(m_size<=0)
         {
             m_mutex.lock();

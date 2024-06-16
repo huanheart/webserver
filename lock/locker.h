@@ -64,14 +64,14 @@ public:
     }
     bool lock()
     {
-        return pthread_mutex_lock(&m_mutex);
+        return pthread_mutex_lock(&m_mutex)==0;
         //如果此时当前的这个锁没有被任何线程夺得，那么这个线程就会拿取成功，返回0.否则线程被阻塞
         //注意：拿取了锁之后，其他的线程就获取不到这个锁，那么此时需要解锁其他线程才能拿取到
     }
 
     bool unlock()
     {
-        return pthread_mutex_unlock(&m_mutex);
+        return pthread_mutex_unlock(&m_mutex)==0;
     }
 
     pthread_mutex_t *get()
@@ -125,7 +125,7 @@ public:
     //唤醒多个线程
     bool broadcast()
     {
-        return pthread_cond_broadcast(&m_cond);
+        return pthread_cond_broadcast(&m_cond)==0;
     }
 
 };

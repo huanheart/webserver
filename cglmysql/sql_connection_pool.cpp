@@ -80,6 +80,7 @@ bool Connection_pool::release_connection(MYSQL*con)
     ++m_free_conn;
     --m_cur_conn;
     lock.unlock();
+
     reserve.post(); 
     //使得这个信号量+1，因为到时候肯定会有多个线程访问这个单例类的
     //固然其释放和增加的函数肯定都会有线程调用的,即多个客户端访问一个服务器的线程，但是真的要开一个线程为客户去服务吗?
@@ -126,9 +127,6 @@ connectionRAII::connectionRAII(MYSQL**con,Connection_pool*conn_pool)
     poolRAII=conn_pool;
 
 }
-
-
-
 
 connectionRAII::~connectionRAII()
 {

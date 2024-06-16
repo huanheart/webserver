@@ -52,11 +52,12 @@ void sort_timer_lst::add_timer(util_timer* timer, util_timer* lst_head)
 
 	while (temp)
 	{
-		if (temp->expire < temp->expire)
+		if (timer->expire < temp->expire)
 		{
 			prev->next = timer;
 			timer->next = temp;
 			temp->prev = timer;
+			timer->prev=prev;
 			break;
 		}
 		prev = temp;
@@ -181,11 +182,13 @@ void Utils::addfd(int epollfd,int fd,bool one_shot,int TRIGMode)
 		event.events= EPOLLIN | EPOLLET | EPOLLRDHUP;
 	else 
 		event.events = EPOLLIN | EPOLLRDHUP;
+	if (one_shot)
+        event.events |= EPOLLONESHOT;
 	epoll_ctl(epollfd,EPOLL_CTL_ADD,fd,&event); //向内核事件表注册一个事件了
 	setnonblocking(fd);
 }
 
-//信号处理函数 //还不知道是干嘛的
+//信号处理函数 //这个其实就是指定信号触发的时候，指定这个函数
 void Utils::sig_handler(int sig)
 {
 	int save_errno=errno;
@@ -226,7 +229,7 @@ void Utils::addsig(int sig,void(handler)(int),bool restart)
 void Utils::timer_handler()
 {
 	m_timer_lst.tick();
-	alarm(m_TIMESLOT);
+	alarm(m_TIMESLOT); // （用于每隔一段时间检查是否有timer超时）
 	//设置信号传送闹钟，将信号发送给当前的进程
 
 }

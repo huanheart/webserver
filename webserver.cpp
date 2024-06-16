@@ -133,7 +133,8 @@ void WebServer::event_listen()
     if(m_OPT_LINGER==0)
     {
         struct linger tmp={0,1}; 
-        //第一个成员表示是否需要禁用SO_LINGER ，第二个成员表示关闭的时候等待一定时间
+        //linger的第一个成员表示是否需要禁用SO_LINGER ，第二个成员表示关闭的时候等待一定时间
+        //SO_LINGER 选项用于控制套接字在关闭时的行为,特别是在套接字中还有未发送的数据时的行为。
         setsockopt(m_listenfd,SOL_SOCKET,SO_LINGER,&tmp,sizeof(tmp) );
     }
     else if(m_OPT_LINGER==1)
@@ -147,8 +148,8 @@ void WebServer::event_listen()
     bzero(&address,sizeof(address) ); //将前第二个参数置为0
 
     address.sin_family=AF_INET; //指的是ipv4
-    address.sin_addr.s_addr=htonl(INADDR_ANY);
-    address.sin_port=htons(m_port);
+    address.sin_addr.s_addr=htonl(INADDR_ANY);  //设置地址，并且从主机字节序转化成网络字节序（大端序）
+    address.sin_port=htons(m_port); //设置端口号，并且从主机字节序转化成网络字节序
 
     int flag=1;
     setsockopt(m_listenfd,SOL_SOCKET,SO_REUSEADDR,&flag,sizeof(flag) );
@@ -178,9 +179,9 @@ void WebServer::event_listen()
     utils.addfd(m_epollfd, m_pipefd[0], false, 0); //增加事件到这个epool里面去进行监听
 
     utils.addsig(SIGPIPE,SIG_IGN);
-    utils.addsig(SIGALRM, utils.sig_handler, false);
+    utils.addsig(SIGALRM, utils.sig_handler, false); //设置了信号处理函数
     utils.addsig(SIGTERM, utils.sig_handler, false);
-
+ //alarm 函数是一个用于在Unix和类Unix操作系统（如Linux）上设置定时器的系统调用函数。它允许程序在指定的时间间隔后接收一个信号，通常是 SIGALRM 信号
     alarm(TIMESLOT);
     //工具类,信号和描述符基础操作
     Utils::u_pipefd=m_pipefd; //将这个m_pipefd（存储了两个信息，分别是客户端和服务端的文件描述符socket）
@@ -228,6 +229,7 @@ void WebServer::adjust_timer(util_timer*timer)
 
 void WebServer::deal_timer(util_timer *timer,int sockfd)
 {
+    std::cout<<"Processing timer end function starts "<<std::endl;
     timer->cb_func(&users_timer[sockfd]);
     if(timer)
     {
@@ -241,7 +243,8 @@ bool WebServer::dealclientdata() //处理客户端的数据，这个triemode是
 {
     struct sockaddr_in client_address;
     socklen_t client_addrlength=sizeof(client_address);
-    if(m_LISTENTrigmode==0) //是判断循环还是单次的处理，(非阻塞模式)
+    if(m_LISTENTrigmode==0) //是判断循环还是单次的处理，(非阻塞模式) （判断是边缘触发还是水平触发）这个是水平触发
+    //这个会不断有信号传递过来，固然会进入到多次这个函数
     {
         int connfd=accept(m_listenfd,(struct sockaddr*)&client_address,&client_addrlength);
         //这个connfd是客户端的套接字，用于表示客户端的
@@ -258,12 +261,11 @@ bool WebServer::dealclientdata() //处理客户端的数据，这个triemode是
         }
 
         timer(connfd,client_address);   //connfd  是客户端的套接字，用于表示客户端的
-        //为什么此时用户又被添加上去了？不是删除的函数吗？(这里的函数时自身的内部成员函数，而且我看错了，这是处理的意思)
 
     }
-    else 
+    else  //边缘触发，固然一次性尽可能地读取多的数据
     {
-        while(1)     //此时的监听是阻塞模式
+        while(1)     //由于此时的通知信号只会通知一次，固然就需要用循环尽可能地读取多的数据
         {
             int connfd=accept(m_listenfd,(struct sockaddr*)&client_address,&client_addrlength);
             //多次循环进行监听当前的接口是否用信息传过来
@@ -292,14 +294,14 @@ bool WebServer::dealwithsignal(bool & timeout,bool & stop_server)
     int ret=0;
     int sig;
     char signals[1024];
+    //recv()所做的工作，就是把内核缓冲区中的数据拷贝到应用层用户的buffer里面，并返回拷贝的字节数
     ret=recv(m_pipefd[0],signals,sizeof(signals),0); 
     //返回的ret数据如果>0表示成功接收到的数据个数
     if(ret==-1)
         return false;
     else if(ret==0)
         return false;
-    else 
-    {
+    // std::cout<<"deal ing!!"<<std::endl;
         for(int i=0;i<ret;++i) //对每个数据做处理
         {
             switch(signals[i])
@@ -309,14 +311,13 @@ bool WebServer::dealwithsignal(bool & timeout,bool & stop_server)
                     timeout=true;
                     break;
                 }
-                case SIGTERM:
+                case SIGTERM:    //软件终止信号(比如系统关机或者被kill死就会系统发送这个信号)
                 {
                     stop_server=true;
                     break;
                 }
             }
         }
-    }
     return true;
 }
 
@@ -328,6 +329,7 @@ void WebServer::dealwithread(int sockfd)
     //reactor模型：
     if(m_actormodel==1) //model有很多种的，分别用来判断不同的事件用哪种方式
     {
+        std::cout<<"default reactor"<<std::endl;
         if(timer)
             adjust_timer(timer);
 
@@ -350,6 +352,7 @@ void WebServer::dealwithread(int sockfd)
     else 
     {
         //proactor异步网络编程模型采用
+        std::cout<<"default proactor"<<std::endl;
         if(users[sockfd].read_once() )   //true表示成功，false表示失败
         {
             LOG_INFO("deal with the client(%s)", inet_ntoa(users[sockfd].get_address()->sin_addr));
@@ -368,6 +371,7 @@ void WebServer::dealwithread(int sockfd)
 
 void WebServer::dealwithwrite(int sockfd)
 {
+    std::cout<<"dealwithwrite "<<std::endl;
     util_timer * timer=users_timer[sockfd].timer;
     //reactor
     if(m_actormodel==1)
@@ -401,12 +405,10 @@ void WebServer::dealwithwrite(int sockfd)
             //inet_ntoa
             if(timer)
                 adjust_timer(timer);
-            else 
-                deal_timer(timer,sockfd); 
                 //说明出错了,因为都根本没有这个计时器了,但是发现sockfd依旧存在（为什么存在，都传进来参数了，固然有这个sockfd文件描述符）
                 //但是又没计时器。所以还是要调用这个删除计时器函数，因为他内部不仅仅是删除了计时器，还删除了对应计时器的sockfd
-       }
-
+       }else 
+            deal_timer(timer,sockfd); 
     }
 }
 
@@ -438,15 +440,20 @@ void WebServer::event_loop()
             }
             else if(events[i].events&(EPOLLRDHUP | EPOLLHUP | EPOLLERR))
             {
+                //EPOLLRDHUP 表示对端（peer）关闭连接或者半关闭的状态，即表示对方已经断开连接（即发生了半关闭或者关闭）。
+                //EPOLLHUP 表示挂起的连接，通常指的是与套接字相关的文件描述符被挂起或者出现异常。
+                //EPOLLERR 表示发生错误的事件，通常是套接字发生了异常或者错误。
                 //服务器端关闭连接，移除对应的定时器
+                std::cout<<"close the user"<<std::endl;
                 util_timer *timer=users_timer[sockfd].timer;
                 deal_timer(timer,sockfd);
             } 
             //处理信号
+            //当一个套接字上有数据可读时，会触发 EPOLLIN 事件。可以通过 events[i].events & EPOLLIN 来检查套接字是否处于可读状态。
             else if ((sockfd == m_pipefd[0]) && (events[i].events & EPOLLIN))
             { //m_pipefd这个表示管道中有数据可读，跟之前调用的alarm函数扯上关系了
                 //并不是存放用户和服务端的文件描述符，是存储一些信号内容，alarm每调用一次就会往这个管道中发送个信号的
-
+                // std::cout<<"pipe have read and dealwithsignal"<<std::endl;
                 bool flag=dealwithsignal(timeout,stop_server);
                 if(flag==false)
                     LOG_ERROR("%s", "dealclientdata failure");
@@ -454,10 +461,12 @@ void WebServer::event_loop()
             //处理客户连接上接收到的数据
             else if(events[i].events&EPOLLIN)
             {
+                std::cout<<"dealwithread"<<std::endl;
                 dealwithread(sockfd);
             }
             else if(events[i].events&EPOLLOUT)
             {
+                std::cout<<"dealwithwrite "<<std::endl;
                 dealwithwrite(sockfd);
             }
 
@@ -465,7 +474,7 @@ void WebServer::event_loop()
         if(timeout)
         {
             utils.timer_handler();
-            LOG_INFO("%s", "timer tick");
+            // LOG_INFO("%s", "timer tick");
 
             timeout = false;
         }
