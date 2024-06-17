@@ -103,7 +103,6 @@ void WebServer::sql_pool()
     m_conn_pool->init("localhost",m_user,m_password,m_database_name,3306,m_sql_num,m_close_log);
                     //对应url（主机地址，默认为localHost），连接的数据库的名字什么的      //m_sql_num表示最大连接数，放入池子中的
     //初始化数据库读取表
-    // std::cout<<"m_conn_pool init success"<<std::endl;
     users->initmysql_result(m_conn_pool); //users是http_conn类型
 
 }
@@ -170,7 +169,7 @@ void WebServer::event_listen()
     http_conn::m_epollfd=m_epollfd;
 
     ret=socketpair(PF_UNIX,SOCK_STREAM,0,m_pipefd);
-    //这个函数通常用于创建父子进程之间的通信管道
+    //这个函数通常用于创建父子进程之间的通信管道(具体可以看小林coding操作系统中，各个进程通信方式的管道系列)
     //因为它可以在两个文件描述符之间建立一个全双工的通信通道，使得父进程和子进程可以相互通信。
 
 
@@ -181,7 +180,7 @@ void WebServer::event_listen()
     utils.addsig(SIGPIPE,SIG_IGN);
     utils.addsig(SIGALRM, utils.sig_handler, false); //设置了信号处理函数
     utils.addsig(SIGTERM, utils.sig_handler, false);
- //alarm 函数是一个用于在Unix和类Unix操作系统（如Linux）上设置定时器的系统调用函数。它允许程序在指定的时间间隔后接收一个信号，通常是 SIGALRM 信号
+ //alarm 函数是一个用于在Unix和类Unix操作系统（如Linux）上设置定时器的系统调用函数。它允许程序在指定的时间间隔后接收一个信号，通常是 SIGALRM 信号(然后去判断是否有超时的定时器，便于回收资源)
     alarm(TIMESLOT);
     //工具类,信号和描述符基础操作
     Utils::u_pipefd=m_pipefd; //将这个m_pipefd（存储了两个信息，分别是客户端和服务端的文件描述符socket）
@@ -301,7 +300,6 @@ bool WebServer::dealwithsignal(bool & timeout,bool & stop_server)
         return false;
     else if(ret==0)
         return false;
-    // std::cout<<"deal ing!!"<<std::endl;
         for(int i=0;i<ret;++i) //对每个数据做处理
         {
             switch(signals[i])
@@ -325,11 +323,9 @@ bool WebServer::dealwithsignal(bool & timeout,bool & stop_server)
 void WebServer::dealwithread(int sockfd)
 {
     util_timer *timer=users_timer[sockfd].timer;
-    std::cout<<"chu_xian_"<<std::endl;
     //reactor模型：
     if(m_actormodel==1) //model有很多种的，分别用来判断不同的事件用哪种方式
     {
-        std::cout<<"default reactor"<<std::endl;
         if(timer)
             adjust_timer(timer);
 
@@ -352,7 +348,6 @@ void WebServer::dealwithread(int sockfd)
     else 
     {
         //proactor异步网络编程模型采用
-        std::cout<<"default proactor"<<std::endl;
         if(users[sockfd].read_once() )   //true表示成功，false表示失败
         {
             LOG_INFO("deal with the client(%s)", inet_ntoa(users[sockfd].get_address()->sin_addr));
@@ -371,7 +366,6 @@ void WebServer::dealwithread(int sockfd)
 
 void WebServer::dealwithwrite(int sockfd)
 {
-    std::cout<<"dealwithwrite "<<std::endl;
     util_timer * timer=users_timer[sockfd].timer;
     //reactor
     if(m_actormodel==1)
@@ -444,7 +438,8 @@ void WebServer::event_loop()
                 //EPOLLHUP 表示挂起的连接，通常指的是与套接字相关的文件描述符被挂起或者出现异常。
                 //EPOLLERR 表示发生错误的事件，通常是套接字发生了异常或者错误。
                 //服务器端关闭连接，移除对应的定时器
-                std::cout<<"close the user"<<std::endl;
+                // 调试代码
+                // std::cout<<"close the user"<<std::endl;
                 util_timer *timer=users_timer[sockfd].timer;
                 deal_timer(timer,sockfd);
             } 
@@ -461,12 +456,10 @@ void WebServer::event_loop()
             //处理客户连接上接收到的数据
             else if(events[i].events&EPOLLIN)
             {
-                std::cout<<"dealwithread"<<std::endl;
                 dealwithread(sockfd);
             }
             else if(events[i].events&EPOLLOUT)
             {
-                std::cout<<"dealwithwrite "<<std::endl;
                 dealwithwrite(sockfd);
             }
 
@@ -474,7 +467,7 @@ void WebServer::event_loop()
         if(timeout)
         {
             utils.timer_handler();
-            // LOG_INFO("%s", "timer tick");
+            LOG_INFO("%s", "timer tick");
 
             timeout = false;
         }

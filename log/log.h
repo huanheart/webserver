@@ -27,7 +27,7 @@ private:
             fputs(single_log.c_str(),m_fp);
             m_mutex.unlock();
         }
-        return nullptr; //这里不知道为什么要返回，它文档这里是有返回的，但是他这样会报错
+        return nullptr; 
     }
 
 private:
@@ -57,7 +57,7 @@ public:
     static void * flush_log_thread(void *args)
     {
         Log::get_instance()->async_write_log();
-        return nullptr; //不知道这里为什么需要返回
+        return nullptr; 
     }
 
     bool init(const char *file_name,int close_log,int log_buf_size=8192,int split_lines=5000000,int max_queue_size=0);
@@ -70,7 +70,7 @@ public:
 
 };
 
-
+//__VA_ARGS__为处理可变参数的宏，它接受一个格式字符串和任意数量的其他参数。在 LOG 宏被调用时，__VA_ARGS__ 会被替换为传递给宏的所有额外参数。
 #define LOG_DEBUG(format, ...) if(0 == m_close_log) {Log::get_instance()->write_log(0, format, ##__VA_ARGS__); Log::get_instance()->flush();}
 #define LOG_INFO(format, ...) if(0 == m_close_log) {Log::get_instance()->write_log(1, format, ##__VA_ARGS__); Log::get_instance()->flush();}
 #define LOG_WARN(format, ...) if(0 == m_close_log) {Log::get_instance()->write_log(2, format, ##__VA_ARGS__); Log::get_instance()->flush();}

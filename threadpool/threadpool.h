@@ -140,15 +140,15 @@ void thread_pool<T>::run()
         m_queuelocker.unlock();
         if(!request)
             continue;  //分析为什么会出现空的request（因为可能此时队列里面没有请求，但是执行了run，所以会拿到空)
-        std::cout<<"thread dealing!"<<std::endl;
-        if(m_actor_model==1) //这玩意是模型切换，判断你是哪个模型
+        // std::cout<<"thread dealing!"<<std::endl;
+        if(m_actor_model==1) //这玩意是模型切换，判断你是哪个模型，即查看Reactor还是proactor
         {
             if(request->m_state==0)
             {
-                if(request->read_once() )
+                if(request->read_once() ) 
                 {
                     request->improv=1;
-                    connectionRAII mysqlcon(&request->mysql,m_conn_pool); //
+                    connectionRAII mysqlcon(&request->mysql,m_conn_pool); 
                     request->process();
                 }else {
                     request->improv=1;
@@ -156,7 +156,6 @@ void thread_pool<T>::run()
                 }
             }
             else {
-                std::cout<<" thread pool yi bu run request->write() "<<std::endl;
                 if(request->write() ) //写入的时候，需要判断是图片还是
                 {
                     request->improv=1;
@@ -167,7 +166,9 @@ void thread_pool<T>::run()
             }
 
         }else {
-            connectionRAII mysqlcon(&request->mysql,m_conn_pool);
+            connectionRAII mysqlcon(&request->mysql,m_conn_pool); 
+            //每一个http用户都有一个对应的mysql连接，使用RAII思想去实现这个，即这个用户从数据库连接池中获取一个连接，然后给到当前的
+            //request->mysql,后面要处理注册什么的就会从->mysql中去拿
             request->process();
         }    
     }

@@ -36,7 +36,7 @@ public:
 
     ~block_queue()
     {
-        m_mutex.lock(); //为何要加锁？难道有多个线程去调用？
+        m_mutex.lock(); 
         if(m_array!=nullptr)
             delete[]m_array;
         m_mutex.unlock();

@@ -92,6 +92,7 @@ void modfd(int epollfd,int fd,int ev,int TRIMode)
     else 
         event.events=ev | EPOLLONESHOT |EPOLLRDHUP;
     epoll_ctl(epollfd,EPOLL_CTL_MOD,fd,&event); //且这里是修改，且不影响其阻塞特性，没有将阻塞的那些改成非阻塞
+    // (主要进行一个修改，可以让epoll只关心自己想要的事件，而不是关心所有的事件，使其资源开销减少)
 }
 
 
@@ -168,20 +169,23 @@ void http_conn::init()
 
 //从状态机获取状态，用于分析出一行内容
 //返回值为行的读取状态，有LINE_OK,LINE_BAD,LINE_OPEN
-http_conn::LINE_STATUS http_conn::parse_line() //用于解析不同的状态
+http_conn::LINE_STATUS http_conn::parse_line() //用于解析不同的状态（解析每一行）
 {
     char temp;
-    for (; m_checked_idx < m_read_idx; ++m_checked_idx)
+    for (; m_checked_idx < m_read_idx; ++m_checked_idx)         //m_read_idx是一开始用水平触发或者边缘触发读取的内容数据的长度，数据是存放到m_read_buf中的，通过webserver调用read_once
     {
         temp = m_read_buf[m_checked_idx];
-        if(temp=='\r')
+        if(temp=='\r') //回车符号
         {
-            if( (m_checked_idx+1) ==m_read_idx) 
+            if( (m_checked_idx+1) ==m_read_idx) {
+                // std::cout<<"back LINE_OPEN"<<std::endl;
                 return LINE_OPEN;
+            }
             else if(m_read_buf[m_checked_idx+1]=='\n')
             {
                 m_read_buf[m_checked_idx++]='\0';
                 m_read_buf[m_checked_idx++]='\0';
+                // std::cout<<"back LINE_OK"<<std::endl;
                 return LINE_OK;
             }
         }else if(temp=='\n'){
@@ -189,12 +193,14 @@ http_conn::LINE_STATUS http_conn::parse_line() //用于解析不同的状态
             {
                 m_read_buf[m_checked_idx-1]='\0';
                 m_read_buf[m_checked_idx++]='\0';
+                // std::cout<<"back LINE_OK"<<std::endl;
                 return LINE_OK;        
             }
+            // std::cout<<"back LINE_BAD"<<std::endl;
             return  LINE_BAD;
         }
     }
-    std::cout<<"hksahdkahskd  "<<std::endl;
+    // std::cout<<"back LINE_OPEN"<<std::endl;
     return LINE_OPEN;
 
 }
@@ -203,7 +209,6 @@ http_conn::LINE_STATUS http_conn::parse_line() //用于解析不同的状态
 //非阻塞ET工作模式下，需要一次性将数据读完
 bool http_conn::read_once()
 {
-    std::cout<<"jin_ru_read_once"<<std::endl;
     if(m_read_idx>=READ_BUFFER_SIZE)
         return false;
     int bytes_read = 0;
@@ -247,12 +252,9 @@ bool http_conn::read_once()
 //请求行的意思详情看语雀笔记
 http_conn::HTTP_CODE    http_conn::parse_request_line(char* text)
 {
-    std::cout<<"test wei  "<<text<<std::endl;
     m_url=strpbrk(text," \t"); //返回出现在这个第二个字符串集合中的第一个属于字符串1的下标的后面的内容
-    std::cout<<"url 为  "<<m_url<<std::endl;
     if(!m_url)
     {   
-        std::cout<<"cuowu 1"<<std::endl;
         return BAD_REQUEST;
     }
     *m_url++='\0';
@@ -266,27 +268,26 @@ http_conn::HTTP_CODE    http_conn::parse_request_line(char* text)
         cgi=1; //这个cgi是用来干嘛的？是否启用的post
     }
     else {
-        std::cout<<"cuowu 2"<<std::endl;
+     
         return BAD_REQUEST; ///如果都没有这两个请求，这个项目似乎只处理了get和post
     }
 
     m_url+=strspn(m_url," \t" );  //具体看语雀
-    std::cout<<"url 为nwenewsadasd  "<<m_url<<std::endl;
+    
 
 
     m_version=strpbrk(m_url," \t");
     if (!m_version){
-        std::cout<<"cuowu 3"<<std::endl;
+        
         return BAD_REQUEST;
     }
     *m_version++ = '\0';
     
     m_version += strspn(m_version, " \t");
-    std::cout<<m_version<<"  _ding_wei"<<std::endl;
-    std::cout<<" c huxian_    "<<std::endl;
+
     if (strcasecmp(m_version, "HTTP/1.1") != 0) //如果不相等
     {
-        std::cout<<"cuowu 4"<<std::endl;
+   
         return HTTP_CODE::BAD_REQUEST;
     }
     // std::string temp="HTTP/1.1";
@@ -311,15 +312,12 @@ http_conn::HTTP_CODE    http_conn::parse_request_line(char* text)
 
     if(!m_url || m_url[0]!='/' ) //说明出现了错误了，可能后面没有内容了，所以没有截取到'/'
     {
-        std::cout<<"cuowu 5"<<std::endl;
         return BAD_REQUEST;
     }
     //当url为/时，显示判断界面         为什么此时要
-    std::cout<<"shishdsadsad    "<<m_url<<std::endl;
     if(strlen(m_url)==1)
         strcat(m_url,"judge.html");
     m_check_state= CHECK_STATE_HEADER;
-     std::cout<<"shishdsadsad    "<<m_url<<std::endl;
     return NO_REQUEST;
 }
 
@@ -385,24 +383,23 @@ http_conn::HTTP_CODE  http_conn::process_read()
     HTTP_CODE ret=NO_REQUEST;
     char * text=0;
     //判断请求的内容
-    std::cout<<"process_read_now"<<std::endl;
+    // std::cout<<"process_read_now"<<std::endl;
+    //这个循环一开始默认是进入 ||右边的那个 ( (line_status=parse_line() )==LINE_OK，后面弄完之后就会开始请求头以及请求体的处理了
     while( (m_check_state==CHECK_STATE_CONTENT &&line_status==LINE_OK)
           || ( (line_status=parse_line() )==LINE_OK) ) //分析当前行状态是否和此时设置的line_status状态一致
     {
-        std::cout<<"process_read_now_now"<<std::endl;
         text=get_line();
 
         m_start_line=m_checked_idx;
         LOG_INFO("%s",text);
-        std::cout<<text<<"   bushi laodi"<<std::endl;
-        std::cout<<m_check_state<<"  shu chu ba"<<std::endl;
+        // std::cout<<text<<"   bushi laodi"<<std::endl;
+        // std::cout<<m_check_state<<"  shu chu ba"<<std::endl;
         switch (m_check_state)
         {
             case CHECK_STATE_REQUESTLINE:
             {
                 ret=parse_request_line(text);
                 if(ret==BAD_REQUEST){
-                    std::cout<<"使得bad了"<<std::endl;
                     return BAD_REQUEST;
                 }
                 break;
@@ -428,20 +425,20 @@ http_conn::HTTP_CODE  http_conn::process_read()
                 return INTERNAL_ERROR; //服务器内部错误
 
         }
-        return NO_REQUEST;
 
     }
+       return NO_REQUEST;
 
 }
 
 http_conn::HTTP_CODE http_conn::do_request()
 {
-    std::cout<<"do_request now "<<std::endl;
+    // std::cout<<"do_request now "<<std::endl;
     strcpy(m_real_file,doc_root); //将文件的根目录，然后赋值到m_real_file这里
     int len=strlen(doc_root);
     const char * p=strrchr(m_url,'/'); //里面的值不能变,查找'/'第一次出现的位置
 
-    //处理cgi
+    //处理cgi，判断是哪种请求方式
     if(cgi==1&&(*(p+1)=='2' || *(p+1)=='3' ) )
     {
         //根据标志判断是登录检测还是注册检测
@@ -454,7 +451,6 @@ http_conn::HTTP_CODE http_conn::do_request()
         free(m_url_real); //释放操作
     
       //将用户名和密码提取出来
-      //user=123&passwd=123 //难道这个用户名和密码一直都是这玩意吗？
     char name[100],password[100];
     
     {
@@ -552,11 +548,9 @@ http_conn::HTTP_CODE http_conn::do_request()
 
     if(stat(m_real_file,&m_file_stat)<0)  //从里面获取文件当前的信息
     {
-        std::cout<<"meiyou ziyuan "<<std::endl;
         return NO_RESOURCE; //没有资源
     }
     if(!(m_file_stat.st_mode)&S_IROTH) {
-         std::cout<<"fang  wen jin zhi   "<<std::endl;
         return FORBIDDEN_REQUEST; //禁止请求的状态码
     }
 
@@ -565,7 +559,8 @@ http_conn::HTTP_CODE http_conn::do_request()
 
     int fd=open(m_real_file,O_RDONLY); //只读的方式打开这个文件，然后由于在linux下，返回一个文件描述符（这个文件就是要发送的文件了）
     
-    m_file_address=(char*)mmap(0,m_file_stat.st_size,PROT_READ,MAP_PRIVATE,fd,0); //做映射，具体看语雀(这个和要传输的视频文件相关联的)
+    m_file_address=(char*)mmap(0,m_file_stat.st_size,PROT_READ,MAP_PRIVATE,fd,0); //做映射，具体看语雀(这个和要传输的视频文件相关联的)(它也可以做到内存共享)
+    //这里主要是将一个普通文件映射到内存中，通常在需要对文件进行频繁读写时使用
     close(fd);
     
     return FILE_REQUEST;
@@ -586,7 +581,6 @@ void http_conn::unmap()
 bool http_conn::write()
 {
     int temp=0;
-    std::cout<<"jin ru write"<<std::endl;
     if(bytes_to_send==0) //发送字节数==0
     {
         modfd(m_epollfd,m_sockfd,EPOLLIN,m_TRIGMode); //重置epoll函数
@@ -623,9 +617,10 @@ bool http_conn::write()
 
         }
 
-        if(bytes_have_send<=0)
+        if(bytes_to_send<=0)
         {
             unmap();
+            std::cout<<"no break"<<std::endl;
             modfd(m_epollfd, m_sockfd, EPOLLIN, m_TRIGMode);
 
             if(m_linger) //这个是什么？不懂
@@ -704,7 +699,6 @@ bool http_conn::add_content(const char * content)
 
 bool http_conn::process_write(HTTP_CODE ret)
 {
-    std::cout<<"process_write"<<std::endl;
     switch(ret)
     {
         case INTERNAL_ERROR:
@@ -749,8 +743,9 @@ bool http_conn::process_write(HTTP_CODE ret)
             {
                 const char *ok_string="<html><body></body></html>";
                 add_headers(strlen(ok_string));
-                if(!add_content(ok_string) )
+                if(!add_content(ok_string) ){
                     return false;
+                }
             }
         }
         default:
@@ -767,7 +762,7 @@ bool http_conn::process_write(HTTP_CODE ret)
 void http_conn::process()
 {
     HTTP_CODE read_ret=process_read();
-    std::cout<<"process_read"<<std::endl;
+    // std::cout<<"process_read"<<std::endl;
     if(read_ret==NO_REQUEST)
     {
         std::cout<<"HTTP_CODE::NO_REQUEST"<<std::endl;

@@ -6,7 +6,7 @@ objects =main.o log/log.o  cglmysql/sql_connection_pool.o  timer/lst_timer.o   h
 
 #鏈€缁堢洰鏍囨枃浠�
 edit :$(objects)
-	g++ -o   webserver $(objects) -lmysqlclient  -g
+	g++  -g -o   webserver $(objects) -lmysqlclient 
 main.o : config.h
 log.o  : log/log.h log/block_queue.h
 sql_connection_pool.o : cglmysql/sql_connection_pool.h lock/locker.h log/log.h

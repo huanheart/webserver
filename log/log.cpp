@@ -104,7 +104,7 @@ void Log::write_log(int level, const char* format, ...)
     struct tm *sys_tm=localtime(&t);
     struct tm my_tm=*sys_tm;
     char s[16]={0};
-    	switch (level)
+    switch (level)
 	{
 	case 0:
 		strcpy(s, "[debug]:");
