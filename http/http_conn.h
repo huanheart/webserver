@@ -28,6 +28,8 @@
 #include "../cglmysql/sql_connection_pool.h"
 #include "../timer/lst_timer.h"
 #include "../log/log.h"
+#include"../my_stl/my_stl.hpp"
+#include"../memorypool/memorypool.hpp"
 
 class http_conn
 {
@@ -146,8 +148,7 @@ private:
     int bytes_have_send;
     char *doc_root;
 
-    std::map<std::string, std::string> m_users;
-
+    // std::map<std::string,std::string> m_users; //这个是没用的
     int m_TRIGMode; // 触发模式
     int m_close_log;
 

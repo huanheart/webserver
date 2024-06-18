@@ -3,6 +3,8 @@
 #include <mysql/mysql.h>
 #include <fstream>
 
+
+
 const char *ok_200_title = "OK";
 const char *error_400_title = "Bad Request";
 const char *error_400_form = "Your request has bad syntax or is inherently impossible to staisfy.\n";
@@ -14,8 +16,9 @@ const char *error_500_title = "Internal Error";
 const char *error_500_form = "There was an unusual problem serving the request file.\n";
 
 Locker m_lock;
-std::map<std::string, std::string> users;
-
+FindCache<std::string,MemoryPool<std::string> > users;
+//（注意，这个不能放入到http_conn.h中）因为每个用户对应了很多个http类，而不是全局的users来进行管理
+//但是放入到这里就可以做到全局的一个管理了(即所有用户的数据都存储到这个地方)
 
 void http_conn::initmysql_result(Connection_pool *conn_pool)
 {
@@ -40,8 +43,9 @@ void http_conn::initmysql_result(Connection_pool *conn_pool)
     while(MYSQL_ROW row=mysql_fetch_row(result) )
     {
         std::string temp1(row[0]);
-        std::string temp2(row[1]);
-        users[temp1]=temp2;      //存放到对应的内存中，其实可以弄一个redis，存放到里面
+        std::string temp2(row[1]);   
+        std::cout<<temp1<<' '<<temp2<<std::endl; 
+        users.push(temp1,temp2);  //存放到对应的内存中，其实可以弄一个redis，存放到里面
     }
 
 }
@@ -476,11 +480,14 @@ http_conn::HTTP_CODE http_conn::do_request()
         strcat(sql_insert, password);
         strcat(sql_insert, "')");
         //上面这一个主要是拼接一个sql语句而已
-        if(users.find(name)==users.end() ) //说明没有找到,用户表维护在一个map中
+        BackNode<std::string> back;
+        back=users.find(name);
+        if(back.index==f_end) //说明没有找到,用户表维护在一个map中
         {
             m_lock.lock();
             int res=mysql_query(mysql,sql_insert); //访问连接的数据库里面是否有记录
-            users.insert(std::pair<std::string,std::string>(name,password) );
+            std::cout<<"jin ru "<<name<<' '<<password<<std::endl;
+            users.push(name,password);
             m_lock.unlock();
             if(!res) //说明没有，那么直接让他弄到登录界面，先进行一个赋值
                 strcpy(m_url,"/log.html");
@@ -494,7 +501,11 @@ http_conn::HTTP_CODE http_conn::do_request()
     }
       else if (*(p + 1) == '2')
       {
-        if(users.find(name)!=users.end() && users[name]==password)
+        BackNode<std::string> back;
+        back=users.find(name);
+        std::cout<<"shuo ming "<<back.index<<' '<<back.passwd<<std::endl;
+
+        if(back.index!=f_end && back.passwd==password)
             strcpy(m_url, "/welcome.html");
         else 
             strcpy(m_url, "/logError.html");
