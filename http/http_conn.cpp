@@ -20,6 +20,22 @@ FindCache<std::string,MemoryPool<std::string> > users;
 //（注意，这个不能放入到http_conn.h中）因为每个用户对应了很多个http类，而不是全局的users来进行管理
 //但是放入到这里就可以做到全局的一个管理了(即所有用户的数据都存储到这个地方)
 
+AbstractFactory * factory=nullptr;    //这个处理的时候可能需要加锁
+AbstractProxy * obj=nullptr;
+
+
+void http_conn::delete_proxy()
+{
+    if(factory!=nullptr){
+        delete factory;
+        factory=nullptr;
+    }
+    if(obj!=nullptr){
+        delete obj;
+        obj=nullptr;
+    }
+}
+
 void http_conn::initmysql_result(Connection_pool *conn_pool)
 {
     //从连接池里面获取一个连接
@@ -44,11 +60,29 @@ void http_conn::initmysql_result(Connection_pool *conn_pool)
     {
         std::string temp1(row[0]);
         std::string temp2(row[1]);   
-        std::cout<<temp1<<' '<<temp2<<std::endl; 
+        // std::cout<<temp1<<' '<<temp2<<std::endl; 
         users.push(temp1,temp2);  //存放到对应的内存中，其实可以弄一个redis，存放到里面
     }
 
 }
+
+void http_conn::initproxy(int decideproxy)
+{
+    //使用工厂模式，创建对应工厂以及代理类
+    switch(decideproxy)
+    {
+        case 0:
+            factory=new nginxFactory();
+            break;
+        case 1:
+            factory=new noPorxyFactory();
+            break;
+        default:
+            break;
+    }
+    obj=factory->createProxy();
+}
+
 
 //对其文件描述符设置为非阻塞
 int setnonblocking(int fd)
@@ -294,13 +328,7 @@ http_conn::HTTP_CODE    http_conn::parse_request_line(char* text)
    
         return HTTP_CODE::BAD_REQUEST;
     }
-    // std::string temp="HTTP/1.1";
-    // for(int i=0;i<temp.size();i++){
-    //     if(temp[i]!=m_version[i]){
-    //         std::cout<<"cuowu 4"<<std::endl;
-    //         return BAD_REQUEST;
-    //     }
-    // }
+
     if(strncasecmp(m_url,"http://",7)==0) //判断两个字符串的前7个字符是否相等
     {
         m_url+=7;
@@ -325,9 +353,9 @@ http_conn::HTTP_CODE    http_conn::parse_request_line(char* text)
     return NO_REQUEST;
 }
 
-//解析http请求的一个头部信息
+//解析http请求的一个头部信息(逐行解析)
 //这里的内容会被循环调用
-http_conn::HTTP_CODE  http_conn::parse_headers(char *text)
+http_conn::HTTP_CODE  http_conn::parse_headers(char *text,bool &decide_proxy)
 {
     if(text[0]=='\0')
     {
@@ -353,15 +381,24 @@ http_conn::HTTP_CODE  http_conn::parse_headers(char *text)
         text+=strspn(text," \t");
         m_content_length=atol(text); //获取这个字符串的长度
     }
-    else if(strncasecmp(text,"Host:",5)==0 )
+    else if(strncasecmp(text,"Host:",5)==0 )   //比较text字符串前5个字符组成的字符串是否与Host:匹配
     {
         text+=5;
         text+=strspn(text," \t"); //重置这里为开头
         m_host=text;             //获取其内容
     }
+    else if(strncasecmp(text,"X-Forwarded-By:",15)==0 ) //说明是nginx转发的
+    {
+        if(obj->ProxyType==1) //如果没有选择nginx反向代理，固然将nginx访问过来的数据进行拦截
+        {
+            return BAD_REQUEST;
+        }
+        decide_proxy=false; //为了最后进行判断的时候用到的（判断有nginx的时候是否用了对应的无nginx模式）
+        
+    }
     else
     {
-        LOG_INFO("oop!unknow header: %s", text);
+        LOG_INFO("oop!unknow header: %s", text); //输出到日志系统，查看头部有什么额外的标识，可能是发送方自己多额外增加了一些标识
     }
     
     return NO_REQUEST;
@@ -387,7 +424,10 @@ http_conn::HTTP_CODE  http_conn::process_read()
     HTTP_CODE ret=NO_REQUEST;
     char * text=0;
     //判断请求的内容
-    // std::cout<<"process_read_now"<<std::endl;
+    bool decide_proxy=true; 
+    //默认是没用nginx(这个变量一定是需要局部变量的，而不是全局变量)
+    //否则出现了全局的错误（即有一个nginx的请求过来，那么此时将变量设置了false，那么再来一个9006端口，就会误认为是nginx请求过来的）
+
     //这个循环一开始默认是进入 ||右边的那个 ( (line_status=parse_line() )==LINE_OK，后面弄完之后就会开始请求头以及请求体的处理了
     while( (m_check_state==CHECK_STATE_CONTENT &&line_status==LINE_OK)
           || ( (line_status=parse_line() )==LINE_OK) ) //分析当前行状态是否和此时设置的line_status状态一致
@@ -410,18 +450,18 @@ http_conn::HTTP_CODE  http_conn::process_read()
             }
             case CHECK_STATE_HEADER:
             {
-                ret=parse_headers(text);
+                ret=parse_headers(text,decide_proxy);
                 if(ret==BAD_REQUEST)
                     return BAD_REQUEST;
                 else if(ret==GET_REQUEST)
-                    return do_request();
+                    return do_request(decide_proxy);
                 break;
             }
             case CHECK_STATE_CONTENT :
             {
                 ret=parse_content(text);
                 if(ret==GET_REQUEST) //说明是一个完整的GET请求
-                    return do_request();
+                    return do_request(decide_proxy);
                 line_status=LINE_OPEN;
                 break;
             }
@@ -431,13 +471,30 @@ http_conn::HTTP_CODE  http_conn::process_read()
         }
 
     }
-       return NO_REQUEST;
+    if(decide_proxy==false){ 
+        if(obj->ProxyType==1) 
+            return BAD_REQUEST;
+    }else {
+        if(obj->ProxyType==0)
+            return BAD_REQUEST;
+    }
+    return NO_REQUEST;
 
 }
 
-http_conn::HTTP_CODE http_conn::do_request()
+http_conn::HTTP_CODE http_conn::do_request(bool & decide_proxy)
 {
-    // std::cout<<"do_request now "<<std::endl;
+    std::cout<<"do_request now "<<std::endl;
+
+    if(decide_proxy==false){ //表示了用nginx，那么查看obj是否为1(1代表没有用)
+        if(obj->ProxyType==1) //固然矛盾
+            return BAD_REQUEST;
+    }else {
+        if(obj->ProxyType==0){
+            return BAD_REQUEST;
+        }
+    }
+
     strcpy(m_real_file,doc_root); //将文件的根目录，然后赋值到m_real_file这里
     int len=strlen(doc_root);
     const char * p=strrchr(m_url,'/'); //里面的值不能变,查找'/'第一次出现的位置
@@ -486,7 +543,6 @@ http_conn::HTTP_CODE http_conn::do_request()
         {
             m_lock.lock();
             int res=mysql_query(mysql,sql_insert); //访问连接的数据库里面是否有记录
-            std::cout<<"jin ru "<<name<<' '<<password<<std::endl;
             users.push(name,password);
             m_lock.unlock();
             if(!res) //说明没有，那么直接让他弄到登录界面，先进行一个赋值
@@ -503,7 +559,6 @@ http_conn::HTTP_CODE http_conn::do_request()
       {
         BackNode<std::string> back;
         back=users.find(name);
-        std::cout<<"shuo ming "<<back.index<<' '<<back.passwd<<std::endl;
 
         if(back.index!=f_end && back.passwd==password)
             strcpy(m_url, "/welcome.html");
@@ -631,12 +686,13 @@ bool http_conn::write()
         if(bytes_to_send<=0)
         {
             unmap();
-            std::cout<<"no break"<<std::endl;
+            // std::cout<<"no break"<<std::endl;
             modfd(m_epollfd, m_sockfd, EPOLLIN, m_TRIGMode);
 
-            if(m_linger) //这个是什么？不懂
-            //这段代码中有一处注释说到 m_linger，这可能是一个控制连接状态的变量，如果设置为 true，
-            //表示在关闭连接时等待一段时间以确保数据发送完毕，而不是立即关闭连接。这在某些情况下可能是有用的，比如确保客户端接收完整的响应数据。
+            if(m_linger) 
+            //这个是什么？不懂
+            //这段代码中有一处注释说到 m_linger，这是一个控制连接状态的变量，如果设置为 true，说明是在连接的
+            //表示在关闭连接时等待一段时间以确保数据发送完毕，而不是立即关闭连接。即将所有内容进行一个重新初始的过程
             {
                 init();
                 return true;
@@ -651,14 +707,14 @@ bool http_conn::write()
 
 }
 
-//增加响应：
+//这个不是响应部分，这个是用于输出到日志上的，通过流，输出到日志是通过套接字函数来输出的write吧
 bool http_conn::add_response(const char * format,...)
 {
     if(m_write_idx>=WRITE_BUFFER_SIZE)
         return false;   
     va_list arg_list;
     va_start(arg_list,format);   //这个是可变参数的那啥的开头，可以保证可变参数产生一些未定义的行为
-    int len=vsnprintf(m_write_buf+m_write_idx,WRITE_BUFFER_SIZE-1-m_write_idx,format,arg_list);
+    int len=vsnprintf(m_write_buf+m_write_idx,WRITE_BUFFER_SIZE-1-m_write_idx,format,arg_list); //支持可变参数，将一些内容直接放入到m_write_buf中
     //m_write_idx为偏移量大小
     if (len >= (WRITE_BUFFER_SIZE - 1 - m_write_idx))
     {
@@ -668,7 +724,7 @@ bool http_conn::add_response(const char * format,...)
 
     m_write_idx+=len;
     va_end(arg_list);
-    LOG_INFO("request:%s ",m_write_buf);
+    LOG_INFO("request:%s ",m_write_buf); //将对应内容打到一个日志中，这个是最终目的
     return true;
 }
 
@@ -682,7 +738,7 @@ bool http_conn::add_headers(int content_len)
     return add_content_length(content_len)&&add_linger()&&add_blank_line();
 }
 
-bool http_conn::add_content_length(int content_len)
+bool http_conn::add_content_length(int content_len)     //将数据长度给弄出来，将其长度输出到日志上
 {
     return add_response("Content-Length:%d\r\n",content_len);
 }
@@ -695,10 +751,10 @@ bool http_conn::add_content_type()
 
 bool http_conn::add_linger()
 {
-    return add_response("Connection:%s\r\n", (m_linger == true) ? "keep-alive" : "close");
+    return add_response("Connection:%s\r\n", (m_linger == true) ? "keep-alive" : "close"); //将其是否连接状态发给到对应的日志上
 }
 
-bool http_conn::add_blank_line()
+bool http_conn::add_blank_line() //用于换行的
 {
     return add_response("%s", "\r\n");
 }
@@ -773,7 +829,7 @@ bool http_conn::process_write(HTTP_CODE ret)
 void http_conn::process()
 {
     HTTP_CODE read_ret=process_read();
-    // std::cout<<"process_read"<<std::endl;
+    std::cout<<"process_read"<<std::endl;
     if(read_ret==NO_REQUEST)
     {
         std::cout<<"HTTP_CODE::NO_REQUEST"<<std::endl;

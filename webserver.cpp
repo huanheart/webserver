@@ -28,13 +28,14 @@ WebServer::~WebServer()
     close(m_listenfd);
     close(m_pipefd[1]);
     close(m_pipefd[0]);
+    users->delete_proxy();
     delete []users;
     delete []users_timer;
     delete m_pool;
 }
 
 void WebServer::init(int port, std::string user, std::string passWord, std::string databaseName, int log_write, 
-                     int opt_linger, int trigmode, int sql_num, int thread_num, int close_log, int actor_model)
+                     int opt_linger, int trigmode, int sql_num, int thread_num, int close_log, int actor_model,int decideproxy)
 {
    m_port = port;
    m_user = user;
@@ -47,6 +48,7 @@ void WebServer::init(int port, std::string user, std::string passWord, std::stri
    m_TRIGMode = trigmode;
    m_close_log = close_log;
    m_actormodel = actor_model;
+   m_decideproxy=decideproxy;
 }
 
 
@@ -104,9 +106,13 @@ void WebServer::sql_pool()
                     //对应url（主机地址，默认为localHost），连接的数据库的名字什么的      //m_sql_num表示最大连接数，放入池子中的
     //初始化数据库读取表
     users->initmysql_result(m_conn_pool); //users是http_conn类型
-
+   
 }
 
+void WebServer::proxy()
+{
+    users->initproxy(m_decideproxy); //初始化代理方式
+}
 
 void WebServer::threadPool()
 {
@@ -456,10 +462,12 @@ void WebServer::event_loop()
             //处理客户连接上接收到的数据
             else if(events[i].events&EPOLLIN)
             {
+                std::cout<<"read deal now"<<std::endl;
                 dealwithread(sockfd);
             }
             else if(events[i].events&EPOLLOUT)
             {
+                std::cout<<"write deal now"<<std::endl;
                 dealwithwrite(sockfd);
             }
 
