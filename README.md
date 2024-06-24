@@ -64,7 +64,7 @@ linux下c++web服务器
    * cd在webserver目录下
    * make //进行编译
    * ./webserver    //启动项目
-   * 在浏览器输入ip:9006即访问到对应服务器
+   * 在浏览器输入ip:端口.   **举例192.168.12.23:80**   即访问到对应服务器(若开启webserver的-n选项为nginx，那么ip地址输入为nginx的ip地址，否则输入webserver的ip地址+端口,**注意默认需要输入nginx的ip地址，否则访问不到**)
 
 
 ## 个性化运行
