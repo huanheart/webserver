@@ -22,13 +22,16 @@ int main(int argc,char*argv[] )
     //初始化
     server.init(config.PORT, user, passwd, database_name, config.LOGWrite, 
                 config.OPT_LINGER, config.TRIGMode,  config.sql_num,  config.thread_num, 
-                config.close_log, config.actor_model);
+                config.close_log, config.actor_model,config.Proxy);
 
     //日志
     server.log_write();
     //数据库
-    server.sql_pool();       //这里有问题
-    
+    server.sql_pool();    
+
+    //反向代理
+    server.proxy();   
+
     cout<<"sql_pool init success"<<endl;
     //线程池
     server.threadPool();

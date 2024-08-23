@@ -20,6 +20,22 @@ FindCache<std::string,MemoryPool<std::string> > users;
 //£¨×¢Òâ£¬Õâ¸ö²»ÄÜ·ÅÈëµ½http_conn.hÖĞ£©ÒòÎªÃ¿¸öÓÃ»§¶ÔÓ¦ÁËºÜ¶à¸öhttpÀà£¬¶ø²»ÊÇÈ«¾ÖµÄusersÀ´½øĞĞ¹ÜÀí
 //µ«ÊÇ·ÅÈëµ½ÕâÀï¾Í¿ÉÒÔ×öµ½È«¾ÖµÄÒ»¸ö¹ÜÀíÁË(¼´ËùÓĞÓÃ»§µÄÊı¾İ¶¼´æ´¢µ½Õâ¸öµØ·½)
 
+AbstractFactory * factory=nullptr;    //Õâ¸ö´¦ÀíµÄÊ±ºò¿ÉÄÜĞèÒª¼ÓËø
+AbstractProxy * obj=nullptr;
+
+
+void http_conn::delete_proxy()
+{
+    if(factory!=nullptr){
+        delete factory;
+        factory=nullptr;
+    }
+    if(obj!=nullptr){
+        delete obj;
+        obj=nullptr;
+    }
+}
+
 void http_conn::initmysql_result(Connection_pool *conn_pool)
 {
     //´ÓÁ¬½Ó³ØÀïÃæ»ñÈ¡Ò»¸öÁ¬½Ó
@@ -43,12 +59,29 @@ void http_conn::initmysql_result(Connection_pool *conn_pool)
     while(MYSQL_ROW row=mysql_fetch_row(result) )
     {
         std::string temp1(row[0]);
-        std::string temp2(row[1]);   
-        std::cout<<temp1<<' '<<temp2<<std::endl; 
+        std::string temp2(row[1]);
         users.push(temp1,temp2);  //´æ·Åµ½¶ÔÓ¦µÄÄÚ´æÖĞ£¬ÆäÊµ¿ÉÒÔÅªÒ»¸öredis£¬´æ·Åµ½ÀïÃæ
     }
 
 }
+
+void http_conn::initproxy(int decideproxy)
+{
+    //Ê¹ÓÃ¹¤³§Ä£Ê½£¬´´½¨¶ÔÓ¦¹¤³§ÒÔ¼°´úÀíÀà
+    switch(decideproxy)
+    {
+        case 0:
+            factory=new nginxFactory();
+            break;
+        case 1:
+            factory=new noPorxyFactory();
+            break;
+        default:
+            break;
+    }
+    obj=factory->createProxy();
+}
+
 
 //¶ÔÆäÎÄ¼şÃèÊö·ûÉèÖÃÎª·Ç×èÈû
 int setnonblocking(int fd)
@@ -106,9 +139,10 @@ int http_conn::m_epollfd=-1;
 
 
 //¹Ø±ÕÁ¬½Ó£¬¿Í»§×ÜÁ¿-1
+//¿ÉÒÔ·¢ÏÖ£¬´ËÊ±¹Ø±ÕÁËÁ¬½Ó£¬µ«ÊÇËÆºõÃ»ÓĞ¹Ø±Õµ±Ç°¶¨Ê±Æ÷£¡
+//´ı·¢ÏÖÊÇ·ñ´æÔÚbug
 void http_conn::close_conn( bool real_close)
 {
-
     if(real_close&&(m_sockfd!=-1) )
     {
         printf("close %d\n",m_sockfd);
@@ -182,14 +216,12 @@ http_conn::LINE_STATUS http_conn::parse_line() //ÓÃÓÚ½âÎö²»Í¬µÄ×´Ì¬£¨½âÎöÃ¿Ò»ĞĞ£
         if(temp=='\r') //»Ø³µ·ûºÅ
         {
             if( (m_checked_idx+1) ==m_read_idx) {
-                // std::cout<<"back LINE_OPEN"<<std::endl;
                 return LINE_OPEN;
             }
             else if(m_read_buf[m_checked_idx+1]=='\n')
             {
                 m_read_buf[m_checked_idx++]='\0';
                 m_read_buf[m_checked_idx++]='\0';
-                // std::cout<<"back LINE_OK"<<std::endl;
                 return LINE_OK;
             }
         }else if(temp=='\n'){
@@ -197,20 +229,19 @@ http_conn::LINE_STATUS http_conn::parse_line() //ÓÃÓÚ½âÎö²»Í¬µÄ×´Ì¬£¨½âÎöÃ¿Ò»ĞĞ£
             {
                 m_read_buf[m_checked_idx-1]='\0';
                 m_read_buf[m_checked_idx++]='\0';
-                // std::cout<<"back LINE_OK"<<std::endl;
                 return LINE_OK;        
             }
-            // std::cout<<"back LINE_BAD"<<std::endl;
             return  LINE_BAD;
         }
     }
-    // std::cout<<"back LINE_OPEN"<<std::endl;
     return LINE_OPEN;
 
 }
 
 //Ñ­»·¶ÁÈ¡¿Í»§Êı¾İ£¬Ö±µ½ÎŞÊı¾İ¿É¶Á»ò¶Ô·½¹Ø±ÕÁ¬½Ó
 //·Ç×èÈûET¹¤×÷Ä£Ê½ÏÂ£¬ĞèÒªÒ»´ÎĞÔ½«Êı¾İ¶ÁÍê
+//process_read ÒÀÀµ read_once Ìá¹©µÄÊı¾İ£ºread_once ½«Êı¾İ´Ó socket ÖĞ¶ÁÈ¡µ½»º³åÇø£¬È»ºó process_read ÔÚ»º³åÇøÖĞ½âÎöÊı¾İ¡£
+//read_once Ö»¸ºÔğÊı¾İ¶ÁÈ¡£¬¶ø process_read ¸ºÔğÊı¾İ½âÎö,ºóÕß¿ÉÒÔÕæÕı×öµ½Êı¾İ¶ÁÈ¡µÄÀ¹½Ø
 bool http_conn::read_once()
 {
     if(m_read_idx>=READ_BUFFER_SIZE)
@@ -294,13 +325,7 @@ http_conn::HTTP_CODE    http_conn::parse_request_line(char* text)
    
         return HTTP_CODE::BAD_REQUEST;
     }
-    // std::string temp="HTTP/1.1";
-    // for(int i=0;i<temp.size();i++){
-    //     if(temp[i]!=m_version[i]){
-    //         std::cout<<"cuowu 4"<<std::endl;
-    //         return BAD_REQUEST;
-    //     }
-    // }
+
     if(strncasecmp(m_url,"http://",7)==0) //ÅĞ¶ÏÁ½¸ö×Ö·û´®µÄÇ°7¸ö×Ö·ûÊÇ·ñÏàµÈ
     {
         m_url+=7;
@@ -325,9 +350,9 @@ http_conn::HTTP_CODE    http_conn::parse_request_line(char* text)
     return NO_REQUEST;
 }
 
-//½âÎöhttpÇëÇóµÄÒ»¸öÍ·²¿ĞÅÏ¢
+//½âÎöhttpÇëÇóµÄÒ»¸öÍ·²¿ĞÅÏ¢(ÖğĞĞ½âÎö)
 //ÕâÀïµÄÄÚÈİ»á±»Ñ­»·µ÷ÓÃ
-http_conn::HTTP_CODE  http_conn::parse_headers(char *text)
+http_conn::HTTP_CODE  http_conn::parse_headers(char *text,bool &decide_proxy)
 {
     if(text[0]=='\0')
     {
@@ -353,15 +378,24 @@ http_conn::HTTP_CODE  http_conn::parse_headers(char *text)
         text+=strspn(text," \t");
         m_content_length=atol(text); //»ñÈ¡Õâ¸ö×Ö·û´®µÄ³¤¶È
     }
-    else if(strncasecmp(text,"Host:",5)==0 )
+    else if(strncasecmp(text,"Host:",5)==0 )   //±È½Ïtext×Ö·û´®Ç°5¸ö×Ö·û×é³ÉµÄ×Ö·û´®ÊÇ·ñÓëHost:Æ¥Åä
     {
         text+=5;
         text+=strspn(text," \t"); //ÖØÖÃÕâÀïÎª¿ªÍ·
         m_host=text;             //»ñÈ¡ÆäÄÚÈİ
     }
+    else if(strncasecmp(text,"X-Forwarded-By:",15)==0 ) //ËµÃ÷ÊÇnginx×ª·¢µÄ
+    {
+        if(obj->ProxyType==1) //Èç¹ûÃ»ÓĞÑ¡Ôñnginx·´Ïò´úÀí£¬¹ÌÈ»½«nginx·ÃÎÊ¹ıÀ´µÄÊı¾İ½øĞĞÀ¹½Ø
+        {
+            return BAD_REQUEST;
+        }
+        decide_proxy=false; //ÎªÁË×îºó½øĞĞÅĞ¶ÏµÄÊ±ºòÓÃµ½µÄ£¨ÅĞ¶ÏÓĞnginxµÄÊ±ºòÊÇ·ñÓÃÁË¶ÔÓ¦µÄÎŞnginxÄ£Ê½£©
+        
+    }
     else
     {
-        LOG_INFO("oop!unknow header: %s", text);
+        LOG_INFO("oop!unknow header: %s", text); //Êä³öµ½ÈÕÖ¾ÏµÍ³£¬²é¿´Í·²¿ÓĞÊ²Ã´¶îÍâµÄ±êÊ¶£¬¿ÉÄÜÊÇ·¢ËÍ·½×Ô¼º¶à¶îÍâÔö¼ÓÁËÒ»Ğ©±êÊ¶
     }
     
     return NO_REQUEST;
@@ -381,13 +415,19 @@ http_conn::HTTP_CODE http_conn::parse_content(char * text)
     return NO_REQUEST;
 }
 
+
+//process_read ÊÇ´¦Àí HTTP Ğ­ÒéµÄºËĞÄÂß¼­£¬½âÎöÇëÇó²¢ÅĞ¶ÏÈçºÎÏìÓ¦
+//process_read ÒÀÀµ read_once Ìá¹©µÄÊı¾İ
 http_conn::HTTP_CODE  http_conn::process_read()
 {
     LINE_STATUS line_status=LINE_OK;
     HTTP_CODE ret=NO_REQUEST;
     char * text=0;
     //ÅĞ¶ÏÇëÇóµÄÄÚÈİ
-    // std::cout<<"process_read_now"<<std::endl;
+    bool decide_proxy=true; 
+    //Ä¬ÈÏÊÇÃ»ÓÃnginx(Õâ¸ö±äÁ¿Ò»¶¨ÊÇĞèÒª¾Ö²¿±äÁ¿µÄ£¬¶ø²»ÊÇÈ«¾Ö±äÁ¿)
+    //·ñÔò³öÏÖÁËÈ«¾ÖµÄ´íÎó£¨¼´ÓĞÒ»¸önginxµÄÇëÇó¹ıÀ´£¬ÄÇÃ´´ËÊ±½«±äÁ¿ÉèÖÃÁËfalse£¬ÄÇÃ´ÔÙÀ´Ò»¸ö9006¶Ë¿Ú£¬¾Í»áÎóÈÏÎªÊÇnginxÇëÇó¹ıÀ´µÄ£©
+
     //Õâ¸öÑ­»·Ò»¿ªÊ¼Ä¬ÈÏÊÇ½øÈë ||ÓÒ±ßµÄÄÇ¸ö ( (line_status=parse_line() )==LINE_OK£¬ºóÃæÅªÍêÖ®ºó¾Í»á¿ªÊ¼ÇëÇóÍ·ÒÔ¼°ÇëÇóÌåµÄ´¦ÀíÁË
     while( (m_check_state==CHECK_STATE_CONTENT &&line_status==LINE_OK)
           || ( (line_status=parse_line() )==LINE_OK) ) //·ÖÎöµ±Ç°ĞĞ×´Ì¬ÊÇ·ñºÍ´ËÊ±ÉèÖÃµÄline_status×´Ì¬Ò»ÖÂ
@@ -396,8 +436,6 @@ http_conn::HTTP_CODE  http_conn::process_read()
 
         m_start_line=m_checked_idx;
         LOG_INFO("%s",text);
-        // std::cout<<text<<"   bushi laodi"<<std::endl;
-        // std::cout<<m_check_state<<"  shu chu ba"<<std::endl;
         switch (m_check_state)
         {
             case CHECK_STATE_REQUESTLINE:
@@ -410,18 +448,18 @@ http_conn::HTTP_CODE  http_conn::process_read()
             }
             case CHECK_STATE_HEADER:
             {
-                ret=parse_headers(text);
+                ret=parse_headers(text,decide_proxy);
                 if(ret==BAD_REQUEST)
                     return BAD_REQUEST;
                 else if(ret==GET_REQUEST)
-                    return do_request();
+                    return do_request(decide_proxy);
                 break;
             }
             case CHECK_STATE_CONTENT :
             {
                 ret=parse_content(text);
                 if(ret==GET_REQUEST) //ËµÃ÷ÊÇÒ»¸öÍêÕûµÄGETÇëÇó
-                    return do_request();
+                    return do_request(decide_proxy);
                 line_status=LINE_OPEN;
                 break;
             }
@@ -431,13 +469,29 @@ http_conn::HTTP_CODE  http_conn::process_read()
         }
 
     }
-       return NO_REQUEST;
+    if(decide_proxy==false){ 
+        if(obj->ProxyType==1) 
+            return BAD_REQUEST;
+    }else {
+        if(obj->ProxyType==0)
+            return BAD_REQUEST;
+    }
+    return NO_REQUEST;
 
 }
 
-http_conn::HTTP_CODE http_conn::do_request()
+http_conn::HTTP_CODE http_conn::do_request(bool & decide_proxy)
 {
-    // std::cout<<"do_request now "<<std::endl;
+
+    if(decide_proxy==false){ //±íÊ¾ÁËÓÃnginx£¬ÄÇÃ´²é¿´objÊÇ·ñÎª1(1´ú±íÃ»ÓĞÓÃ)
+        if(obj->ProxyType==1) //¹ÌÈ»Ã¬¶Ü
+            return BAD_REQUEST;
+    }else {
+        if(obj->ProxyType==0){
+            return BAD_REQUEST;
+        }
+    }
+
     strcpy(m_real_file,doc_root); //½«ÎÄ¼şµÄ¸ùÄ¿Â¼£¬È»ºó¸³Öµµ½m_real_fileÕâÀï
     int len=strlen(doc_root);
     const char * p=strrchr(m_url,'/'); //ÀïÃæµÄÖµ²»ÄÜ±ä,²éÕÒ'/'µÚÒ»´Î³öÏÖµÄÎ»ÖÃ
@@ -486,7 +540,6 @@ http_conn::HTTP_CODE http_conn::do_request()
         {
             m_lock.lock();
             int res=mysql_query(mysql,sql_insert); //·ÃÎÊÁ¬½ÓµÄÊı¾İ¿âÀïÃæÊÇ·ñÓĞ¼ÇÂ¼
-            std::cout<<"jin ru "<<name<<' '<<password<<std::endl;
             users.push(name,password);
             m_lock.unlock();
             if(!res) //ËµÃ÷Ã»ÓĞ£¬ÄÇÃ´Ö±½ÓÈÃËûÅªµ½µÇÂ¼½çÃæ£¬ÏÈ½øĞĞÒ»¸ö¸³Öµ
@@ -503,7 +556,6 @@ http_conn::HTTP_CODE http_conn::do_request()
       {
         BackNode<std::string> back;
         back=users.find(name);
-        std::cout<<"shuo ming "<<back.index<<' '<<back.passwd<<std::endl;
 
         if(back.index!=f_end && back.passwd==password)
             strcpy(m_url, "/welcome.html");
@@ -589,6 +641,8 @@ void http_conn::unmap()
 
 }
 
+
+//write Ôò¸ºÔğÊµ¼Ê½«Êı¾İ·¢ËÍ¸ø¿Í»§¶Ë£¬´¦Àí·¢ËÍÖĞµÄ´íÎó¡¢½ø¶È¸üĞÂµÈ²Ù×÷¡£
 bool http_conn::write()
 {
     int temp=0;
@@ -601,6 +655,7 @@ bool http_conn::write()
 
     while(1)
     {
+        //ÒÉÎÊ£ºÈç¹ûµ±Ç°sockfd±»É¾³ıÁË£¬Õâ¸öº¯Êı»á³öÏÖ¶Î´íÎóÂğ£¿¿ÉÄÜ»á£¬¾ßÌåµÃµ÷ÊÔ
         temp=writev(m_sockfd,m_iv,m_iv_count); //±íÊ¾Ğ´Èë³É¹¦µÄ×Ö½ÚÊı
 
         if(temp<0) //ËµÃ÷Ğ´ÈëÊ§°Ü
@@ -631,12 +686,13 @@ bool http_conn::write()
         if(bytes_to_send<=0)
         {
             unmap();
-            std::cout<<"no break"<<std::endl;
             modfd(m_epollfd, m_sockfd, EPOLLIN, m_TRIGMode);
 
-            if(m_linger) //Õâ¸öÊÇÊ²Ã´£¿²»¶®
-            //Õâ¶Î´úÂëÖĞÓĞÒ»´¦×¢ÊÍËµµ½ m_linger£¬Õâ¿ÉÄÜÊÇÒ»¸ö¿ØÖÆÁ¬½Ó×´Ì¬µÄ±äÁ¿£¬Èç¹ûÉèÖÃÎª true£¬
-            //±íÊ¾ÔÚ¹Ø±ÕÁ¬½ÓÊ±µÈ´ıÒ»¶ÎÊ±¼äÒÔÈ·±£Êı¾İ·¢ËÍÍê±Ï£¬¶ø²»ÊÇÁ¢¼´¹Ø±ÕÁ¬½Ó¡£ÕâÔÚÄ³Ğ©Çé¿öÏÂ¿ÉÄÜÊÇÓĞÓÃµÄ£¬±ÈÈçÈ·±£¿Í»§¶Ë½ÓÊÕÍêÕûµÄÏìÓ¦Êı¾İ¡£
+            if(m_linger) 
+            //Õâ¸öÊÇÊ²Ã´£¿²»¶®
+            //Õâ¶Î´úÂëÖĞÓĞÒ»´¦×¢ÊÍËµµ½ m_linger£¬ÕâÊÇÒ»¸ö¿ØÖÆÁ¬½Ó×´Ì¬µÄ±äÁ¿£¬Èç¹ûÉèÖÃÎª true£¬ËµÃ÷ÊÇÏë¼ÌĞøÁ¬½ÓµÄ
+            //Èç¹ûÉèÖÃÎªfalse£¬ÄÇÃ´½«»á¹Ø±ÕÁ¬½Ó
+                //±íÊ¾ÔÚ¹Ø±ÕÁ¬½ÓÊ±µÈ´ıÒ»¶ÎÊ±¼äÒÔÈ·±£Êı¾İ·¢ËÍÍê±Ï£¬¶ø²»ÊÇÁ¢¼´¹Ø±ÕÁ¬½Ó¡£¼´½«ËùÓĞÄÚÈİ½øĞĞÒ»¸öÖØĞÂ³õÊ¼µÄ¹ı³Ì
             {
                 init();
                 return true;
@@ -651,14 +707,14 @@ bool http_conn::write()
 
 }
 
-//Ôö¼ÓÏìÓ¦£º
+//Õâ¸ö²»ÊÇÏìÓ¦²¿·Ö£¬Õâ¸öÊÇÓÃÓÚÊä³öµ½ÈÕÖ¾ÉÏµÄ£¬Í¨¹ıÁ÷£¬Êä³öµ½ÈÕÖ¾ÊÇÍ¨¹ıÌ×½Ó×Öº¯ÊıÀ´Êä³öµÄwrite°É
 bool http_conn::add_response(const char * format,...)
 {
     if(m_write_idx>=WRITE_BUFFER_SIZE)
         return false;   
     va_list arg_list;
     va_start(arg_list,format);   //Õâ¸öÊÇ¿É±ä²ÎÊıµÄÄÇÉ¶µÄ¿ªÍ·£¬¿ÉÒÔ±£Ö¤¿É±ä²ÎÊı²úÉúÒ»Ğ©Î´¶¨ÒåµÄĞĞÎª
-    int len=vsnprintf(m_write_buf+m_write_idx,WRITE_BUFFER_SIZE-1-m_write_idx,format,arg_list);
+    int len=vsnprintf(m_write_buf+m_write_idx,WRITE_BUFFER_SIZE-1-m_write_idx,format,arg_list); //Ö§³Ö¿É±ä²ÎÊı£¬½«Ò»Ğ©ÄÚÈİÖ±½Ó·ÅÈëµ½m_write_bufÖĞ
     //m_write_idxÎªÆ«ÒÆÁ¿´óĞ¡
     if (len >= (WRITE_BUFFER_SIZE - 1 - m_write_idx))
     {
@@ -668,7 +724,7 @@ bool http_conn::add_response(const char * format,...)
 
     m_write_idx+=len;
     va_end(arg_list);
-    LOG_INFO("request:%s ",m_write_buf);
+    LOG_INFO("request:%s ",m_write_buf); //½«¶ÔÓ¦ÄÚÈİ´òµ½Ò»¸öÈÕÖ¾ÖĞ£¬Õâ¸öÊÇ×îÖÕÄ¿µÄ
     return true;
 }
 
@@ -682,7 +738,7 @@ bool http_conn::add_headers(int content_len)
     return add_content_length(content_len)&&add_linger()&&add_blank_line();
 }
 
-bool http_conn::add_content_length(int content_len)
+bool http_conn::add_content_length(int content_len)     //½«Êı¾İ³¤¶È¸øÅª³öÀ´£¬½«Æä³¤¶ÈÊä³öµ½ÈÕÖ¾ÉÏ
 {
     return add_response("Content-Length:%d\r\n",content_len);
 }
@@ -695,10 +751,10 @@ bool http_conn::add_content_type()
 
 bool http_conn::add_linger()
 {
-    return add_response("Connection:%s\r\n", (m_linger == true) ? "keep-alive" : "close");
+    return add_response("Connection:%s\r\n", (m_linger == true) ? "keep-alive" : "close"); //½«ÆäÊÇ·ñÁ¬½Ó×´Ì¬·¢¸øµ½¶ÔÓ¦µÄÈÕÖ¾ÉÏ
 }
 
-bool http_conn::add_blank_line()
+bool http_conn::add_blank_line() //ÓÃÓÚ»»ĞĞµÄ
 {
     return add_response("%s", "\r\n");
 }
@@ -708,6 +764,8 @@ bool http_conn::add_content(const char * content)
     return add_response("%s",content);
 }
 
+//Õâ¸öº¯ÊıµÄÊä³öÊÇ½«ĞèÒª·¢ËÍµÄÏìÓ¦Êı¾İ×¼±¸ºÃ£¬²¢ÉèÖÃºÃ iovec ½á¹¹£¨m_iv£©ºÍ×Ü×Ö½ÚÊı (bytes_to_send)£¬ÒÔ±ãºóĞøÍ¨¹ı write º¯ÊıÊµ¼Ê·¢ËÍ¡£
+//Ö÷Òª¸ºÔğ¹¹½¨ HTTP ÏìÓ¦Êı¾İ£¬²¢×¼±¸ºÃÊı¾İ½á¹¹£¬¹©ºóĞø·¢ËÍÊ¹ÓÃ
 bool http_conn::process_write(HTTP_CODE ret)
 {
     switch(ret)
@@ -759,6 +817,7 @@ bool http_conn::process_write(HTTP_CODE ret)
                 }
             }
         }
+
         default:
             return false;
     }
@@ -773,10 +832,8 @@ bool http_conn::process_write(HTTP_CODE ret)
 void http_conn::process()
 {
     HTTP_CODE read_ret=process_read();
-    // std::cout<<"process_read"<<std::endl;
     if(read_ret==NO_REQUEST)
     {
-        std::cout<<"HTTP_CODE::NO_REQUEST"<<std::endl;
         modfd(m_epollfd,m_sockfd,EPOLLIN,m_TRIGMode);
         return ;
     }
@@ -784,6 +841,7 @@ void http_conn::process()
     if (!write_ret)
     {
         close_conn();
+        return ;
     }
     modfd(m_epollfd, m_sockfd, EPOLLOUT, m_TRIGMode);
 }

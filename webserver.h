@@ -60,17 +60,20 @@ public:
     Client_data * users_timer; //定时器数组，每个下标所对应的内容就是一个用户的定时器
     Utils utils;
 
+    //反向代理与限制并发相关
+    int m_decideproxy=0; 
+
 public:
     WebServer();
     ~WebServer();
 
     void init(int port,std::string user,std::string password,std::string database_name,
               int log_write,int opt_linger,int trigmode,int sql_num,
-              int thread_num,int close_log,int actor_model);
+              int thread_num,int close_log,int actor_model,int decideproxy);
     void threadPool();
     void sql_pool();
     void log_write();
-    //下面这个函数不知道干嘛的
+    void proxy();
     void trig_mode();
     void event_listen();
     void event_loop();

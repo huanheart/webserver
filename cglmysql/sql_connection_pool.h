@@ -53,7 +53,7 @@ public:
 };
 
 
-
+//这个类主要是体现了RAII思想的，创建一个中间类，使用者可以不用关心数据库连接池的底层细节
 class connectionRAII{
 
 public:
@@ -61,7 +61,7 @@ public:
 	~connectionRAII();
 	
 private:
-	MYSQL *conRAII;    //这里要看一下具体是干嘛的(在初始化的时候，将RAII这个类的conRAII与poolRAII都进行了一个初始化)
+	MYSQL *conRAII;
 	Connection_pool *poolRAII;
 };
 

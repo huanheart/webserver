@@ -169,7 +169,7 @@ void Log::write_log(int level, const char* format, ...)
     log_str=m_buf;
 
     m_mutex.unlock();
-    if(m_is_async&&!m_log_queue->is_full())//如果选择了异步版本，且队列没满的时候，那么我们就直接放入队列中，否则直接现在就开始放入
+    if(m_is_async&&!m_log_queue->is_full())//如果选择了异步版本，且队列没满的时候，那么我们就直接放入队列中（会有后台线程帮助我们打日志），否则直接现在就开始放入
     {
         m_log_queue->push(log_str);
     }else {

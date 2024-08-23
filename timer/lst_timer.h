@@ -24,7 +24,7 @@
 #include <time.h>
 
 #include"../log/log.h"
-
+#include "../lock/locker.h"
 
 class util_timer;
 
@@ -41,7 +41,10 @@ public:
 class util_timer
 {
 public:
-    util_timer():prev(nullptr),next(nullptr){}
+    util_timer():prev(nullptr),next(nullptr){
+        cb_func=nullptr;
+        user_data=nullptr;
+    }
     void (*cb_func)(Client_data*); //可能是定时器到期了的一个回调函数
 
 public:
@@ -68,9 +71,11 @@ public:
 private:
 	void add_timer(util_timer* timer, util_timer* lst_head); //这个目前还不知道是干嘛的
 
+    void test(); //调试用的
+
 	util_timer* head;
 	util_timer* tail;
-
+    Locker m_mutex;
 };
 
 

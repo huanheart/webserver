@@ -16,12 +16,12 @@ class thread_pool
 {
 private:
     int m_thread_number; //线程池中的线程数
-    int m_max_requests;       //请求队列中允许的最大请求数 //这个可能的意思就是指最多有m_max_requests的用户同时访问我的服务器
+    int m_max_requests;       //请求队列中允许的最大请求数 //这个可能的意思就是指最多有m_max_requests的用户同时访问我的服务器（不严谨，应该是最大工作队列中的数量）
     pthread_t*m_threads;   //描述线程池的数组，其大小为m_thread_number,即线程池
     std::list<T*> m_workqueue; //请求队列
     Locker m_queuelocker; //保护请求队列的互斥锁
     Sem m_queuestat;           //是否有任务需要处理
-    Connection_pool * m_conn_pool; //数据库，为什么要有数据库？这个用来干嘛的？？？
+    Connection_pool * m_conn_pool; //数据库，做到跟其他类共享一个数据库，此时更方便访问数据库连接池
     int m_actor_model;        //模型切换
 private:
     //这个是工作线程运行的函数，不断从工作队列中取出任务并执行
@@ -110,7 +110,7 @@ bool thread_pool<T>::append_p(T *request)  //异步处理添加到请求队列当中
 }
 
 //思考，为什么不直接调用run函数呢？难道是为了获取这个pool？
-//而且为什么要返还这个pool呢？
+//而且为什么要返还这个pool呢？这里返回没啥用
 //这里的run是会由不同的线程进行一个调用（即不同的用户会进行一个调用，但是run里面的逻辑是一样的，固然出现多个线程访问同一个阻塞队列）
 //固然需要加锁，其中，信号量是保证只能有信号量所绑定的用户数量，锁是保证线程同步
 template<typename T>
@@ -143,12 +143,12 @@ void thread_pool<T>::run()
         // std::cout<<"thread dealing!"<<std::endl;
         if(m_actor_model==1) //这玩意是模型切换，判断你是哪个模型，即查看Reactor还是proactor
         {
-            if(request->m_state==0)
+            if(request->m_state==0)  //m_state查看是读是写操作
             {
                 if(request->read_once() ) 
                 {
                     request->improv=1;
-                    connectionRAII mysqlcon(&request->mysql,m_conn_pool); 
+                    connectionRAII mysqlcon(&request->mysql,m_conn_pool);
                     request->process();
                 }else {
                     request->improv=1;
@@ -158,7 +158,7 @@ void thread_pool<T>::run()
             else {
                 if(request->write() ) //写入的时候，需要判断是图片还是
                 {
-                    request->improv=1;
+                    request->improv=1;  //表示处理完了这个事件
                 }else {
                     request->improv=1;
                     request->timer_flag=1;

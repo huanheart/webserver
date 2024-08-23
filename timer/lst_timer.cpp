@@ -2,6 +2,9 @@
 #include"../http/http_conn.h"
 
 
+
+
+
 sort_timer_lst::sort_timer_lst()
 {
 	head = nullptr;
@@ -23,13 +26,17 @@ sort_timer_lst::~sort_timer_lst()
 
 void sort_timer_lst::add_timer(util_timer* timer)
 {
+//    m_mutex.lock();
 	if (!timer)
 	{
+//        m_mutex.unlock();
 		return;
 	}
 	if (!head)  //说明链表为空
 	{
 		head = tail = timer;
+        head->next= nullptr;
+//        m_mutex.unlock();
 		return;
 	}
 
@@ -38,15 +45,18 @@ void sort_timer_lst::add_timer(util_timer* timer)
 		timer-> next = head; //由于这里到期时间小，固然将其放到头即可
 		head->prev = timer;
 		head = timer;
+//        m_mutex.unlock();
 		return;
 	}
-
+//    m_mutex.unlock();
 	add_timer(timer, head); //否则进行一个内部维护
+
 }
 
 //内部维护排序
 void sort_timer_lst::add_timer(util_timer* timer, util_timer* lst_head)
 {
+//    m_mutex.lock();
 	util_timer * prev = lst_head; //先拿add来说，因为此时传入得lst_head是头节点
 	util_timer* temp = prev->next; //头结点得下一个
 
@@ -71,16 +81,35 @@ void sort_timer_lst::add_timer(util_timer* timer, util_timer* lst_head)
 		timer->next = nullptr;
 		tail = timer;
 	}
+//    m_mutex.unlock();
 }
 
+void sort_timer_lst::test()
+{
+    if(head== nullptr){
+        std::cout<<"head is nullptr"<<std::endl;
+        return ;
+    }
+    util_timer * p=head;
+    int i=0;
+    std::cout<<"now -1 head pointer : "<<-1<<' '<<head<<std::endl;
+    while(p){
+        std::cout<<"now i and poniter: "<<i<<' '<<p<<std::endl;
+        p=p->next;
+        i++;
+    }
+
+}
 void sort_timer_lst::adjust_timer(util_timer* timer) 
 {
-	if (!timer)
-		return;
-	
+	if (!timer) {
+        return;
+    }
 	util_timer* temp = timer->next;
 	if (!temp || (timer->expire < temp->expire)) //说明这个根本不用维护了
-		return;
+    {
+        return;
+    }
 	if (timer == head)
 	{
 		head = head->next;        //不过这里的话，是将其结点从链表中拆出来，
@@ -92,7 +121,7 @@ void sort_timer_lst::adjust_timer(util_timer* timer)
 	{
 		timer->prev->next = timer->next;
 		timer->next->prev = timer->prev;
-		add_timer(timer, timer->next);      
+		add_timer(timer, timer->next);
 		//分析为什么要这样传参(减少时间吧？因为它前面的一定会比他先超时）
 		//固然到达它的时候，就不用管它前面的了，因为前面的肯定优先比它进行了adjust处理了
 	}
@@ -101,21 +130,24 @@ void sort_timer_lst::adjust_timer(util_timer* timer)
 
 void sort_timer_lst::del_timer(util_timer*timer)
 {
-	if(!timer)
-		return ;
+	if(!timer) {
+        return;
+    }
 	if ((timer == head )&& (timer == tail) ) //说明此时就只有一个结点在链表中
 	{
 		delete timer;
 		head = nullptr;
 		tail = nullptr;
+        timer = nullptr;
 		return;
 	}
 
-	if (timer = head)
+	if (timer == head)
 	{
 		head = head->next;
 		head->prev = nullptr;
 		delete timer;
+        timer = nullptr;
 		return;
 
 	}
@@ -125,17 +157,21 @@ void sort_timer_lst::del_timer(util_timer*timer)
 		tail = tail->prev;
 		tail->next = nullptr;
 		delete timer;
+        timer = nullptr;
 		return;
 	}
 	timer->prev->next = timer->next;
 	timer->next->prev = timer->prev;
 	delete timer;
+    timer = nullptr;
 }
 
 void sort_timer_lst::tick()
 {
 	if(!head) //说明链表为空
-		return ;
+    {
+        return ;
+    }
 	time_t cur=time(nullptr);
 	util_timer*temp=head;
 
@@ -152,7 +188,6 @@ void sort_timer_lst::tick()
 		delete temp;
 		temp=head;
 	}
-
 }
 
 
@@ -161,7 +196,9 @@ void Utils::init(int timeslot)
 	m_TIMESLOT=timeslot;
 }
 
-//对socket文件描述符设置非阻塞
+//对文件描述符设置非阻塞，不一定是socket文件描述符
+//举个例子
+//如果输出缓冲区已满，write 会立即返回，并设置错误码为 EAGAIN 或 EWOULDBLOCK，而不会阻塞等待缓冲区可用。
 int Utils::setnonblocking(int fd)
 {
 	int old_option=fcntl(fd,F_GETFL); //同个F——GETFL标志可以知道你此时调用函数是为了获取fd的状态的。
@@ -206,15 +243,18 @@ void Utils::sig_handler(int sig)
 
 //设置信号函数
 //这段代码的作用是为特定信号设置信号处理函数
+//调用处的utils.addsig(SIGPIPE,SIG_IGN);是另外一个用途：忽略第一个SIGPIPE信号，保证安全
 void Utils::addsig(int sig,void(handler)(int),bool restart)
 {
 	struct sigaction sa;
 	memset(&sa,'\0',sizeof(sa));
-	sa.sa_handler=handler; //指定信号发生的时候触发函数是什么
+	sa.sa_handler=handler; //指定信号发生的时候触发函数是什么，可以发现是上面这个sig_handler函数
 	if(restart)
 		sa.sa_flags|=SA_RESTART;; //接收道信号后是否重启
 	
 	// 调用sigfillset函数后，sa.sa_mask指向的信号集中的所有位都会被置为1，
+    //sigfillset当我们发送了当前的信号，以至于触发信号处理函数的时候，若检测到之前设置过这个信号不被打断
+    //那么其余信号就干涉不了这个信号，以及这个信号处理函数，保证信号处理函数的成功
 	sigfillset(&sa.sa_mask);
 	
 	//上面这个是字段设置为包含所有信号的信号集。这样做是为了在信号处理函数执行期间阻塞所有其他信号，以防止中断信号处理函数的执行。
@@ -249,8 +289,10 @@ class Utils;
 //这个函数是关闭资源的，用来取消对这个socket连接的监听
 void cb_func(Client_data*user_data)
 {
-	//删除当前这个epoll事件监听器中当前用户的sockfd信息
-	//并关闭
+
+    user_data->timer= nullptr; //非常严谨的做法
+//	删除当前这个epoll事件监听器中当前用户的sockfd信息
+//	并关闭
 	epoll_ctl(Utils::u_epollfd,EPOLL_CTL_DEL,user_data->sockfd,0);
 	assert(user_data);
 	close(user_data->sockfd);

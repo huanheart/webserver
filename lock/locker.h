@@ -5,6 +5,7 @@
 #include<pthread.h>
 #include<semaphore.h>
 
+
 class Sem
 {
 private:
@@ -16,6 +17,7 @@ public:
     {
         if(sem_init(&m_sem,0,0)!=0)
         {
+
             throw std::exception();
         }
     }

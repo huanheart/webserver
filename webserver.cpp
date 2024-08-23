@@ -28,13 +28,14 @@ WebServer::~WebServer()
     close(m_listenfd);
     close(m_pipefd[1]);
     close(m_pipefd[0]);
+    users->delete_proxy();
     delete []users;
     delete []users_timer;
     delete m_pool;
 }
 
 void WebServer::init(int port, std::string user, std::string passWord, std::string databaseName, int log_write, 
-                     int opt_linger, int trigmode, int sql_num, int thread_num, int close_log, int actor_model)
+                     int opt_linger, int trigmode, int sql_num, int thread_num, int close_log, int actor_model,int decideproxy)
 {
    m_port = port;
    m_user = user;
@@ -47,6 +48,7 @@ void WebServer::init(int port, std::string user, std::string passWord, std::stri
    m_TRIGMode = trigmode;
    m_close_log = close_log;
    m_actormodel = actor_model;
+   m_decideproxy=decideproxy;
 }
 
 
@@ -104,9 +106,13 @@ void WebServer::sql_pool()
                     //对应url（主机地址，默认为localHost），连接的数据库的名字什么的      //m_sql_num表示最大连接数，放入池子中的
     //初始化数据库读取表
     users->initmysql_result(m_conn_pool); //users是http_conn类型
-
+   
 }
 
+void WebServer::proxy()
+{
+    users->initproxy(m_decideproxy); //初始化代理方式
+}
 
 void WebServer::threadPool()
 {
@@ -155,14 +161,14 @@ void WebServer::event_listen()
     ret = bind(m_listenfd, (struct sockaddr *)&address, sizeof(address));
     assert(ret>=0);
     //进行监听
-    ret=listen(m_listenfd,5);
+    ret=listen(m_listenfd,256); //5表示监听队列的最大长度
     assert(ret>=0);
     utils.init(TIMESLOT);
     
 
     //现在是epoll创建内核事件表：
     epoll_event events[MAX_EVENT_NUMBER];
-    m_epollfd=epoll_create(5); //文件描述符的估计值，具体看语雀
+    m_epollfd=epoll_create(1000); //文件描述符的估计值，具体看语雀
     assert(m_epollfd!=-1);
 
     utils.addfd(m_epollfd,m_listenfd,false,m_LISTENTrigmode);
@@ -175,8 +181,8 @@ void WebServer::event_listen()
 
     assert(ret!=-1);
     utils.setnonblocking(m_pipefd[1]); //自己的函数，设置为非阻塞，将这个文件描述符
-    utils.addfd(m_epollfd, m_pipefd[0], false, 0); //增加事件到这个epool里面去进行监听
-
+    utils.addfd(m_epollfd, m_pipefd[0], false, 0); //增加事件到这个epoll里面去进行监听,可读的时候会触发事件
+    //当服务器尝试向一个已经断开的连接写入数据时，可能会因为收到 SIGPIPE 而导致进程异常退出。
     utils.addsig(SIGPIPE,SIG_IGN);
     utils.addsig(SIGALRM, utils.sig_handler, false); //设置了信号处理函数
     utils.addsig(SIGTERM, utils.sig_handler, false);
@@ -184,13 +190,12 @@ void WebServer::event_listen()
     alarm(TIMESLOT);
     //工具类,信号和描述符基础操作
     Utils::u_pipefd=m_pipefd; //将这个m_pipefd（存储了两个信息，分别是客户端和服务端的文件描述符socket）
-    Utils::u_epollfd=m_epollfd; //将事件监听器epool传送给工具类
+    Utils::u_epollfd=m_epollfd; //将事件监听器epoll传送给工具类
 }
 
 
 void WebServer::timer(int connfd,struct sockaddr_in client_address)
 {
-    
     users[connfd].init(connfd,client_address,m_root,m_CONNTrigmode,
                         m_close_log,m_user,m_password,m_database_name);
     //一种http类的数组，connfd这个应该是文件描述符sockfd,每个元素应该就针对一个用户吧？
@@ -199,7 +204,8 @@ void WebServer::timer(int connfd,struct sockaddr_in client_address)
     //创建定时器，设置回调函数和超时时间，绑定用户数据，将定时器添加到链表中
     users_timer[connfd].address = client_address;
     users_timer[connfd].sockfd = connfd;
-    util_timer *timer=new util_timer(); 
+
+    util_timer *timer=new util_timer();
     //每个用户专门对一个定时器(然后用户有指向定时器的权力定时器也有指向用户的权力)
     timer->user_data=&users_timer[connfd]; //定时器指向用户
 
@@ -225,15 +231,16 @@ void WebServer::adjust_timer(util_timer*timer)
     LOG_INFO("%s","adjust timer once");
 }
 
-
+//在这个函数中，定时器和sockfd都会被删除
 void WebServer::deal_timer(util_timer *timer,int sockfd)
 {
-    std::cout<<"Processing timer end function starts "<<std::endl;
+
     timer->cb_func(&users_timer[sockfd]);
-    if(timer)
-    {
-        utils.m_timer_lst.del_timer(timer);
-    }
+    if(timer== nullptr) //这里做了修改，原来是将cb_func放在这个判断的前面
+        return ;
+
+    utils.m_timer_lst.del_timer(timer);
+    timer= nullptr; //这个应该没用
     LOG_INFO("close fd %d",users_timer[sockfd].sockfd);
 }
 
@@ -258,7 +265,6 @@ bool WebServer::dealclientdata() //处理客户端的数据，这个triemode是
             LOG_ERROR("%s","Internal server busy"); //服务端也写一个日志进去
             return false;
         }
-
         timer(connfd,client_address);   //connfd  是客户端的套接字，用于表示客户端的
 
     }
@@ -326,22 +332,24 @@ void WebServer::dealwithread(int sockfd)
     //reactor模型：
     if(m_actormodel==1) //model有很多种的，分别用来判断不同的事件用哪种方式
     {
-        if(timer)
+        if(timer) {
             adjust_timer(timer);
-
+        }
         //如果监测到读事件，将该事件放入到请求队列中
         m_pool->append(users+sockfd,0);
-        
+        //让主线程阻塞到当前位置，查看当前子线程是否有处理对应事件
         while(true)
         {
-            if(users[sockfd].timer_flag==1) //是表示需要删除
+            if (1 == users[sockfd].improv)  //查看当前子线程是否有处理对应事件
             {
-                deal_timer(timer,sockfd);
-                users[sockfd].timer_flag=0;
+                if (users[sockfd].timer_flag == 1) //是表示需要删除
+                {
+                    deal_timer(timer, sockfd);
+                    users[sockfd].timer_flag = 0;
+                }
+                users[sockfd].improv = 0;
+                break;
             }
-            users[sockfd].improv=0;
-            break;
-
         }
 
     }
@@ -357,9 +365,9 @@ void WebServer::dealwithread(int sockfd)
                 adjust_timer(timer);
             
         }
-        else 
-            deal_timer(timer,sockfd);
-
+        else {
+            deal_timer(timer, sockfd);
+        }
     }
 
 }
@@ -368,19 +376,20 @@ void WebServer::dealwithwrite(int sockfd)
 {
     util_timer * timer=users_timer[sockfd].timer;
     //reactor
+
     if(m_actormodel==1)
     {
         if (timer)
         {
             adjust_timer(timer);
         }
-        m_pool->append(users + sockfd, 1); //这里是写
+        m_pool->append(users + sockfd, 1); //这里是异步写
         //这里users+sockfd有点不懂(其实就是当前用户，这个users是一个http用户数组)
         while(true)
         {
             if(users[sockfd].improv==1) //improv具体含义不是很懂
             {
-                if(users[sockfd].timer_flag==1) //说明出错了，超时什么的,需要删除了
+                if(users[sockfd].timer_flag==1) //说明出错了，超时什么的(或者说做完了当前任务）,则定时器需要删除了（因为是短连接）
                 {
                     deal_timer(timer,sockfd);
                     users[sockfd].timer_flag=0;
@@ -393,7 +402,7 @@ void WebServer::dealwithwrite(int sockfd)
     else 
     {
        //proactor
-       if(users[sockfd].write())
+       if(users[sockfd].write())  //直接同步写，而不是异步写了
        {
             LOG_INFO("send data to the client(%s)", inet_ntoa(users[sockfd].get_address()->sin_addr)); //通过sock可以获取到地址
             //inet_ntoa
@@ -401,8 +410,10 @@ void WebServer::dealwithwrite(int sockfd)
                 adjust_timer(timer);
                 //说明出错了,因为都根本没有这个计时器了,但是发现sockfd依旧存在（为什么存在，都传进来参数了，固然有这个sockfd文件描述符）
                 //但是又没计时器。所以还是要调用这个删除计时器函数，因为他内部不仅仅是删除了计时器，还删除了对应计时器的sockfd
-       }else 
-            deal_timer(timer,sockfd); 
+       }else {
+           deal_timer(timer, sockfd); //说明出错了，超时什么的(或者说做完了当前任务）,则定时器需要删除了（因为是短连接）
+       }
+
     }
 }
 
@@ -414,7 +425,8 @@ void WebServer::event_loop()
 
     while(!stop_server)
     {
-        int number=epoll_wait(m_epollfd,events,MAX_EVENT_NUMBER,-1); //如果设置为 -1，则表示阻塞等待直到有事件发生,他会将内容放到对应
+        int number=epoll_wait(m_epollfd,events,MAX_EVENT_NUMBER,-1);
+        //如果设置为 -1，则表示阻塞等待直到有事件发生,他会将内容放到对应
         //用户提供的数组中
         if(number<0&&errno!=EINTR)     //说明出错了
         {
@@ -439,16 +451,15 @@ void WebServer::event_loop()
                 //EPOLLERR 表示发生错误的事件，通常是套接字发生了异常或者错误。
                 //服务器端关闭连接，移除对应的定时器
                 // 调试代码
-                // std::cout<<"close the user"<<std::endl;
                 util_timer *timer=users_timer[sockfd].timer;
-                deal_timer(timer,sockfd);
+                if(timer)    //如果前面删除过，那么不用删除了
+                    deal_timer(timer,sockfd);
             } 
             //处理信号
             //当一个套接字上有数据可读时，会触发 EPOLLIN 事件。可以通过 events[i].events & EPOLLIN 来检查套接字是否处于可读状态。
             else if ((sockfd == m_pipefd[0]) && (events[i].events & EPOLLIN))
             { //m_pipefd这个表示管道中有数据可读，跟之前调用的alarm函数扯上关系了
                 //并不是存放用户和服务端的文件描述符，是存储一些信号内容，alarm每调用一次就会往这个管道中发送个信号的
-                // std::cout<<"pipe have read and dealwithsignal"<<std::endl;
                 bool flag=dealwithsignal(timeout,stop_server);
                 if(flag==false)
                     LOG_ERROR("%s", "dealclientdata failure");

@@ -30,6 +30,8 @@
 #include "../log/log.h"
 #include"../my_stl/my_stl.hpp"
 #include"../memorypool/memorypool.hpp"
+#include"../proxy/proxy.hpp"
+
 
 class http_conn
 {
@@ -77,7 +79,10 @@ public:
 public:
 
     http_conn() = default;
-    ~http_conn() = default;
+    ~http_conn()=default;
+    void delete_proxy(); 
+    //用这个将对应工厂以及代理删除，不能用析构函数进行删除，因为每个http代表一个用户
+    //一个用户被删除了，不代表其他用户不需要它的工厂，固然当整个webserver结束了，才将代理进行一个删除，这点很重要
 
 public:
     void init(int sockfd, const sockaddr_in &addr, char *, int, int, std::string user, std::string passwd, std::string sqlname);
@@ -90,6 +95,7 @@ public:
         return &m_address;
     }
     void initmysql_result(Connection_pool *conn_pool);
+    void initproxy(int decideproxy);
     int timer_flag;
     int improv;
 
@@ -103,9 +109,9 @@ private:
     HTTP_CODE process_read();                               // 进程读取
     bool process_write(HTTP_CODE ret);                      // 进程写入
     HTTP_CODE parse_request_line(char *text);               // 解析请求行
-    HTTP_CODE parse_headers(char *text);                    // 解析头部
+    HTTP_CODE parse_headers(char *text,bool &decide_proxy);    //后续多加了代理类，可以将bool改成int      // 解析头部
     HTTP_CODE parse_content(char *text);                    // 解析身体
-    HTTP_CODE do_request();                                 // 做请求
+    HTTP_CODE do_request(bool &decide_proxy);                                 // 做请求
     char *get_line() { return m_read_buf + m_start_line; }; // 获取行
     LINE_STATUS parse_line();                               // 解析行
     void unmap();

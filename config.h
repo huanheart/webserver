@@ -15,6 +15,8 @@ public:
     //端口号
     int PORT;
 
+    int Proxy=0;   //默认选择nginx,固使用反向代理
+
     //日志写入方式
     int LOGWrite;
 

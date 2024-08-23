@@ -57,7 +57,7 @@ MYSQL * Connection_pool::get_connection()
     MYSQL *con=nullptr;
     if(conn_list.size()==0)
         return nullptr;
-    reserve.wait(); //信号量去等待
+    reserve.wait(); //信号量去阻塞等待，其他用户返回回来的连接
 
     lock.lock();
     con=conn_list.front();
