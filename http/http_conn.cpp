@@ -17,10 +17,10 @@ const char *error_500_form = "There was an unusual problem serving the request f
 
 Locker m_lock;
 FindCache<std::string,MemoryPool<std::string> > users;
-//£¨×¢Òâ£¬Õâ¸ö²»ÄÜ·ÅÈëµ½http_conn.hÖĞ£©ÒòÎªÃ¿¸öÓÃ»§¶ÔÓ¦ÁËºÜ¶à¸öhttpÀà£¬¶ø²»ÊÇÈ«¾ÖµÄusersÀ´½øĞĞ¹ÜÀí
-//µ«ÊÇ·ÅÈëµ½ÕâÀï¾Í¿ÉÒÔ×öµ½È«¾ÖµÄÒ»¸ö¹ÜÀíÁË(¼´ËùÓĞÓÃ»§µÄÊı¾İ¶¼´æ´¢µ½Õâ¸öµØ·½)
+//ï¼ˆæ³¨æ„ï¼Œè¿™ä¸ªä¸èƒ½æ”¾å…¥åˆ°http_conn.hä¸­ï¼‰å› ä¸ºæ¯ä¸ªç”¨æˆ·å¯¹åº”äº†å¾ˆå¤šä¸ªhttpç±»ï¼Œè€Œä¸æ˜¯å…¨å±€çš„usersæ¥è¿›è¡Œç®¡ç†
+//ä½†æ˜¯æ”¾å…¥åˆ°è¿™é‡Œå°±å¯ä»¥åšåˆ°å…¨å±€çš„ä¸€ä¸ªç®¡ç†äº†(å³æ‰€æœ‰ç”¨æˆ·çš„æ•°æ®éƒ½å­˜å‚¨åˆ°è¿™ä¸ªåœ°æ–¹)
 
-AbstractFactory * factory=nullptr;    //Õâ¸ö´¦ÀíµÄÊ±ºò¿ÉÄÜĞèÒª¼ÓËø
+AbstractFactory * factory=nullptr;    //è¿™ä¸ªå¤„ç†çš„æ—¶å€™å¯èƒ½éœ€è¦åŠ é”
 AbstractProxy * obj=nullptr;
 
 
@@ -38,36 +38,36 @@ void http_conn::delete_proxy()
 
 void http_conn::initmysql_result(Connection_pool *conn_pool)
 {
-    //´ÓÁ¬½Ó³ØÀïÃæ»ñÈ¡Ò»¸öÁ¬½Ó
+    //ä»è¿æ¥æ± é‡Œé¢è·å–ä¸€ä¸ªè¿æ¥
     MYSQL* mysql=nullptr;
     connectionRAII mysqlcon(&mysql,conn_pool);
-    //ÔÚuser±íÖĞ¼ìË÷username,passwdÊı¾İ£¬¿´ÊÇ·ñ¿ÉÒÔÂú×ã²»±¨´íµÄÌõ¼ş
-    if(mysql_query(mysql,"select username,passwd from user") ) //Èç¹û·µ»Ø·Ç0£¬ËµÃ÷ÄÚ²¿´íÎó
+    //åœ¨userè¡¨ä¸­æ£€ç´¢username,passwdæ•°æ®ï¼Œçœ‹æ˜¯å¦å¯ä»¥æ»¡è¶³ä¸æŠ¥é”™çš„æ¡ä»¶
+    if(mysql_query(mysql,"select username,passwd from user") ) //å¦‚æœè¿”å›é0ï¼Œè¯´æ˜å†…éƒ¨é”™è¯¯
     {
         LOG_ERROR("select error:%s\n",mysql_error(mysql) );
     }
 
-    //´Ó±íÖĞ¼ìË÷ÍêÕûµÄ½á¹û¼¯£º
+    //ä»è¡¨ä¸­æ£€ç´¢å®Œæ•´çš„ç»“æœé›†ï¼š
     MYSQL_RES *result=mysql_store_result(mysql);
 
-    //·µ»Ø½á¹û¼¯µÄÁĞÊı
+    //è¿”å›ç»“æœé›†çš„åˆ—æ•°
     int num_fields=mysql_num_fields(result);
 
-    //·µ»ØËùÓĞ×Ö¶Î½á¹¹µÄÊı×é
-    MYSQL_FIELD * fields=mysql_fetch_fields(result); //ÕâÁ½¸öÓĞÊ²Ã´ÓÃÂğ£¿¶¨Òå¾Ö²¿±äÁ¿Ò²Ã»¿´µ½ÓĞÉ¶ÀûÓÃ³¡¾°
+    //è¿”å›æ‰€æœ‰å­—æ®µç»“æ„çš„æ•°ç»„
+    MYSQL_FIELD * fields=mysql_fetch_fields(result); //è¿™ä¸¤ä¸ªæœ‰ä»€ä¹ˆç”¨å—ï¼Ÿå®šä¹‰å±€éƒ¨å˜é‡ä¹Ÿæ²¡çœ‹åˆ°æœ‰å•¥åˆ©ç”¨åœºæ™¯
 
     while(MYSQL_ROW row=mysql_fetch_row(result) )
     {
         std::string temp1(row[0]);
         std::string temp2(row[1]);
-        users.push(temp1,temp2);  //´æ·Åµ½¶ÔÓ¦µÄÄÚ´æÖĞ£¬ÆäÊµ¿ÉÒÔÅªÒ»¸öredis£¬´æ·Åµ½ÀïÃæ
+        users.push(temp1,temp2);  //å­˜æ”¾åˆ°å¯¹åº”çš„å†…å­˜ä¸­ï¼Œå…¶å®å¯ä»¥å¼„ä¸€ä¸ªredisï¼Œå­˜æ”¾åˆ°é‡Œé¢
     }
 
 }
 
 void http_conn::initproxy(int decideproxy)
 {
-    //Ê¹ÓÃ¹¤³§Ä£Ê½£¬´´½¨¶ÔÓ¦¹¤³§ÒÔ¼°´úÀíÀà
+    //ä½¿ç”¨å·¥å‚æ¨¡å¼ï¼Œåˆ›å»ºå¯¹åº”å·¥å‚ä»¥åŠä»£ç†ç±»
     switch(decideproxy)
     {
         case 0:
@@ -83,7 +83,7 @@ void http_conn::initproxy(int decideproxy)
 }
 
 
-//¶ÔÆäÎÄ¼şÃèÊö·ûÉèÖÃÎª·Ç×èÈû
+//å¯¹å…¶æ–‡ä»¶æè¿°ç¬¦è®¾ç½®ä¸ºéé˜»å¡
 int setnonblocking(int fd)
 {
     int old_option=fcntl(fd,F_GETFL);
@@ -92,19 +92,19 @@ int setnonblocking(int fd)
     return old_option;
 }
 
-//½«ÄÚºËÊÂ¼ş±í×¢²á¶ÁÊÂ¼ş£¬ETÄ£Ê½£¬Ñ¡Ôñ¿ªÆôEPOLLONESHOT
+//å°†å†…æ ¸äº‹ä»¶è¡¨æ³¨å†Œè¯»äº‹ä»¶ï¼ŒETæ¨¡å¼ï¼Œé€‰æ‹©å¼€å¯EPOLLONESHOT
 void addfd(int epollfd,int fd,bool one_shot,int TRIGMode)
 {
-    epoll_event event; //epollÊÂ¼ş
-    event.data.fd=fd; //±íÃ÷ÒªÌí¼ÓµÄÎÄ¼şÃèÊö·û
-    // TRIGModeÕâ¸öÅĞ¶ÏÄãÊ¹ÓÃETÄ£Ê½»¹ÊÇÓÃLTÄ£Ê½£¬Ò»´Î´¥·¢ÒÔ¼°Ò»Ö±´¥·¢µÄÇø±ğ
+    epoll_event event; //epolläº‹ä»¶
+    event.data.fd=fd; //è¡¨æ˜è¦æ·»åŠ çš„æ–‡ä»¶æè¿°ç¬¦
+    // TRIGModeè¿™ä¸ªåˆ¤æ–­ä½ ä½¿ç”¨ETæ¨¡å¼è¿˜æ˜¯ç”¨LTæ¨¡å¼ï¼Œä¸€æ¬¡è§¦å‘ä»¥åŠä¸€ç›´è§¦å‘çš„åŒºåˆ«
     if(TRIGMode==1)
         event.events =EPOLLIN | EPOLLET |EPOLLRDHUP;
     else 
         event.events=EPOLLIN |EPOLLRDHUP;
-// ±íÊ¾ÊÇ·ñÊ¹ÓÃ EPOLLONESHOT Ñ¡Ïî¡£Èç¹ûÉèÖÃÎª true£¬Ôò±íÊ¾ÎÄ¼şÃèÊö·ûÖ»ÄÜ±»´¥·¢Ò»´Î£¬
-// ĞèÒªÖØĞÂÌí¼Óµ½ epoll ÊµÀıÖĞ£»Èç¹ûÉèÖÃÎª false£¬Ôò±íÊ¾ÎÄ¼şÃèÊö·û¿ÉÒÔ¶à´Î´¥·¢¡£
-    if(one_shot) //¾ö¶¨ÊÂ¼ş´¥·¢Ò»´Î»¹ÊÇ¶à´Î
+// è¡¨ç¤ºæ˜¯å¦ä½¿ç”¨ EPOLLONESHOT é€‰é¡¹ã€‚å¦‚æœè®¾ç½®ä¸º trueï¼Œåˆ™è¡¨ç¤ºæ–‡ä»¶æè¿°ç¬¦åªèƒ½è¢«è§¦å‘ä¸€æ¬¡ï¼Œ
+// éœ€è¦é‡æ–°æ·»åŠ åˆ° epoll å®ä¾‹ä¸­ï¼›å¦‚æœè®¾ç½®ä¸º falseï¼Œåˆ™è¡¨ç¤ºæ–‡ä»¶æè¿°ç¬¦å¯ä»¥å¤šæ¬¡è§¦å‘ã€‚
+    if(one_shot) //å†³å®šäº‹ä»¶è§¦å‘ä¸€æ¬¡è¿˜æ˜¯å¤šæ¬¡
         event.events |=EPOLLONESHOT;
     epoll_ctl(epollfd,EPOLL_CTL_ADD,fd,&event);
     setnonblocking(fd);
@@ -113,10 +113,10 @@ void addfd(int epollfd,int fd,bool one_shot,int TRIGMode)
 
 
 
-//´ÓÄÚºËÊ±¼ä±íÉ¾³ıÃèÊö·û
+//ä»å†…æ ¸æ—¶é—´è¡¨åˆ é™¤æè¿°ç¬¦
 void removefd(int epollfd,int fd)
 {
-    epoll_ctl(epollfd,EPOLL_CTL_DEL,fd,0); //É¾³ı´ËÎÄ¼şÃèÊö·û
+    epoll_ctl(epollfd,EPOLL_CTL_DEL,fd,0); //åˆ é™¤æ­¤æ–‡ä»¶æè¿°ç¬¦
     close(fd);
 }
 
@@ -125,22 +125,22 @@ void modfd(int epollfd,int fd,int ev,int TRIMode)
     epoll_event event;
     event.data.fd=fd;
     if(TRIMode==1)
-        event.events=ev |EPOLLET |EPOLLONESHOT |EPOLLRDHUP; //ÕâÀïÊÇETÄ£Ê½ºÍELÄ£Ê½µÄÑ¡Ôñ£¬²»¹ıÕâÀï²»¹ÜÄÄÑù¶¼ÓĞ±£Ö¤ÊÂ¼şÖ»´¥·¢Ò»´Î
+        event.events=ev |EPOLLET |EPOLLONESHOT |EPOLLRDHUP; //è¿™é‡Œæ˜¯ETæ¨¡å¼å’ŒELæ¨¡å¼çš„é€‰æ‹©ï¼Œä¸è¿‡è¿™é‡Œä¸ç®¡å“ªæ ·éƒ½æœ‰ä¿è¯äº‹ä»¶åªè§¦å‘ä¸€æ¬¡
     else 
         event.events=ev | EPOLLONESHOT |EPOLLRDHUP;
-    epoll_ctl(epollfd,EPOLL_CTL_MOD,fd,&event); //ÇÒÕâÀïÊÇĞŞ¸Ä£¬ÇÒ²»Ó°ÏìÆä×èÈûÌØĞÔ£¬Ã»ÓĞ½«×èÈûµÄÄÇĞ©¸Ä³É·Ç×èÈû
-    // (Ö÷Òª½øĞĞÒ»¸öĞŞ¸Ä£¬¿ÉÒÔÈÃepollÖ»¹ØĞÄ×Ô¼ºÏëÒªµÄÊÂ¼ş£¬¶ø²»ÊÇ¹ØĞÄËùÓĞµÄÊÂ¼ş£¬Ê¹Æä×ÊÔ´¿ªÏú¼õÉÙ)
+    epoll_ctl(epollfd,EPOLL_CTL_MOD,fd,&event); //ä¸”è¿™é‡Œæ˜¯ä¿®æ”¹ï¼Œä¸”ä¸å½±å“å…¶é˜»å¡ç‰¹æ€§ï¼Œæ²¡æœ‰å°†é˜»å¡çš„é‚£äº›æ”¹æˆéé˜»å¡
+    // (ä¸»è¦è¿›è¡Œä¸€ä¸ªä¿®æ”¹ï¼Œå¯ä»¥è®©epollåªå…³å¿ƒè‡ªå·±æƒ³è¦çš„äº‹ä»¶ï¼Œè€Œä¸æ˜¯å…³å¿ƒæ‰€æœ‰çš„äº‹ä»¶ï¼Œä½¿å…¶èµ„æºå¼€é”€å‡å°‘)
 }
 
 
-int http_conn::m_user_count=0; //¾²Ì¬³ÉÔ±±äÁ¿³õÊ¼»¯
+int http_conn::m_user_count=0; //é™æ€æˆå‘˜å˜é‡åˆå§‹åŒ–
 int http_conn::m_epollfd=-1;
 
 
 
-//¹Ø±ÕÁ¬½Ó£¬¿Í»§×ÜÁ¿-1
-//¿ÉÒÔ·¢ÏÖ£¬´ËÊ±¹Ø±ÕÁËÁ¬½Ó£¬µ«ÊÇËÆºõÃ»ÓĞ¹Ø±Õµ±Ç°¶¨Ê±Æ÷£¡
-//´ı·¢ÏÖÊÇ·ñ´æÔÚbug
+//å…³é—­è¿æ¥ï¼Œå®¢æˆ·æ€»é‡-1
+//å¯ä»¥å‘ç°ï¼Œæ­¤æ—¶å…³é—­äº†è¿æ¥ï¼Œä½†æ˜¯ä¼¼ä¹æ²¡æœ‰å…³é—­å½“å‰å®šæ—¶å™¨ï¼
+//å¾…å‘ç°æ˜¯å¦å­˜åœ¨bug
 void http_conn::close_conn( bool real_close)
 {
     if(real_close&&(m_sockfd!=-1) )
@@ -155,7 +155,7 @@ void http_conn::close_conn( bool real_close)
 }
 
 
-//³õÊ¼»¯Á¬½Ó£¬Íâ²¿µ÷ÓÃ³õÊ¼»¯Ì×½Ó×ÖµØÖ·
+//åˆå§‹åŒ–è¿æ¥ï¼Œå¤–éƒ¨è°ƒç”¨åˆå§‹åŒ–å¥—æ¥å­—åœ°å€
 void http_conn::init(int sockfd,const sockaddr_in &addr,char * root,int TRIGMode,
                      int close_log,std::string user,std::string passwd,std::string sqlname)
 {
@@ -165,19 +165,19 @@ void http_conn::init(int sockfd,const sockaddr_in &addr,char * root,int TRIGMode
     addfd(m_epollfd,sockfd,true,m_TRIGMode);
     m_user_count++;
 
- //µ±ä¯ÀÀÆ÷³öÏÖÁ¬½ÓÖØÖÃÊ±£¬¿ÉÄÜÊÇÍøÕ¾¸ùÄ¿Â¼³ö´í»òhttpÏìÓ¦¸ñÊ½³ö´í»òÕß·ÃÎÊµÄÎÄ¼şÖĞÄÚÈİÍêÈ«Îª¿Õ //ÕâÀï²»¶®
-    doc_root=root; //Õâ¸öÓ¦¸ÃÊÇ·şÎñÆ÷µÄ¸ùÄ¿Â¼
-    m_TRIGMode=TRIGMode; //¿ÉÄÜÊÇ´¥·¢Ä£Ê½µÄ²ÎÊı
+ //å½“æµè§ˆå™¨å‡ºç°è¿æ¥é‡ç½®æ—¶ï¼Œå¯èƒ½æ˜¯ç½‘ç«™æ ¹ç›®å½•å‡ºé”™æˆ–httpå“åº”æ ¼å¼å‡ºé”™æˆ–è€…è®¿é—®çš„æ–‡ä»¶ä¸­å†…å®¹å®Œå…¨ä¸ºç©º //è¿™é‡Œä¸æ‡‚
+    doc_root=root; //è¿™ä¸ªåº”è¯¥æ˜¯æœåŠ¡å™¨çš„æ ¹ç›®å½•
+    m_TRIGMode=TRIGMode; //å¯èƒ½æ˜¯è§¦å‘æ¨¡å¼çš„å‚æ•°
     m_close_log=close_log; 
 
     strcpy(sql_user, user.c_str());
     strcpy(sql_passwd, passwd.c_str());
     strcpy(sql_name, sqlname.c_str());
-    init(); //ÄÚ²¿ÖØÖÃ³õÊ¼»¯
+    init(); //å†…éƒ¨é‡ç½®åˆå§‹åŒ–
 }
 
-//³õÊ¼»¯ĞÂ½ÓÊÕµÄÁ¬½Ó
-//check_stateÄ¬ÈÏÎª·ÖÎöÇëÇóĞĞ×´Ì¬
+//åˆå§‹åŒ–æ–°æ¥æ”¶çš„è¿æ¥
+//check_stateé»˜è®¤ä¸ºåˆ†æè¯·æ±‚è¡ŒçŠ¶æ€
 void http_conn::init()
 {
     mysql=nullptr; 
@@ -205,15 +205,15 @@ void http_conn::init()
 }
 
 
-//´Ó×´Ì¬»ú»ñÈ¡×´Ì¬£¬ÓÃÓÚ·ÖÎö³öÒ»ĞĞÄÚÈİ
-//·µ»ØÖµÎªĞĞµÄ¶ÁÈ¡×´Ì¬£¬ÓĞLINE_OK,LINE_BAD,LINE_OPEN
-http_conn::LINE_STATUS http_conn::parse_line() //ÓÃÓÚ½âÎö²»Í¬µÄ×´Ì¬£¨½âÎöÃ¿Ò»ĞĞ£©
+//ä»çŠ¶æ€æœºè·å–çŠ¶æ€ï¼Œç”¨äºåˆ†æå‡ºä¸€è¡Œå†…å®¹
+//è¿”å›å€¼ä¸ºè¡Œçš„è¯»å–çŠ¶æ€ï¼Œæœ‰LINE_OK,LINE_BAD,LINE_OPEN
+http_conn::LINE_STATUS http_conn::parse_line() //ç”¨äºè§£æä¸åŒçš„çŠ¶æ€ï¼ˆè§£ææ¯ä¸€è¡Œï¼‰
 {
     char temp;
-    for (; m_checked_idx < m_read_idx; ++m_checked_idx)         //m_read_idxÊÇÒ»¿ªÊ¼ÓÃË®Æ½´¥·¢»òÕß±ßÔµ´¥·¢¶ÁÈ¡µÄÄÚÈİÊı¾İµÄ³¤¶È£¬Êı¾İÊÇ´æ·Åµ½m_read_bufÖĞµÄ£¬Í¨¹ıwebserverµ÷ÓÃread_once
+    for (; m_checked_idx < m_read_idx; ++m_checked_idx)         //m_read_idxæ˜¯ä¸€å¼€å§‹ç”¨æ°´å¹³è§¦å‘æˆ–è€…è¾¹ç¼˜è§¦å‘è¯»å–çš„å†…å®¹æ•°æ®çš„é•¿åº¦ï¼Œæ•°æ®æ˜¯å­˜æ”¾åˆ°m_read_bufä¸­çš„ï¼Œé€šè¿‡webserverè°ƒç”¨read_once
     {
         temp = m_read_buf[m_checked_idx];
-        if(temp=='\r') //»Ø³µ·ûºÅ
+        if(temp=='\r') //å›è½¦ç¬¦å·
         {
             if( (m_checked_idx+1) ==m_read_idx) {
                 return LINE_OPEN;
@@ -225,7 +225,7 @@ http_conn::LINE_STATUS http_conn::parse_line() //ÓÃÓÚ½âÎö²»Í¬µÄ×´Ì¬£¨½âÎöÃ¿Ò»ĞĞ£
                 return LINE_OK;
             }
         }else if(temp=='\n'){
-            if(m_checked_idx>1&&m_read_buf[m_checked_idx-1] =='\r')  //-1ºÍ+1µÄÄ¿µÄÊÇ·ÀÖ¹Òç³ö
+            if(m_checked_idx>1&&m_read_buf[m_checked_idx-1] =='\r')  //-1å’Œ+1çš„ç›®çš„æ˜¯é˜²æ­¢æº¢å‡º
             {
                 m_read_buf[m_checked_idx-1]='\0';
                 m_read_buf[m_checked_idx++]='\0';
@@ -238,17 +238,17 @@ http_conn::LINE_STATUS http_conn::parse_line() //ÓÃÓÚ½âÎö²»Í¬µÄ×´Ì¬£¨½âÎöÃ¿Ò»ĞĞ£
 
 }
 
-//Ñ­»·¶ÁÈ¡¿Í»§Êı¾İ£¬Ö±µ½ÎŞÊı¾İ¿É¶Á»ò¶Ô·½¹Ø±ÕÁ¬½Ó
-//·Ç×èÈûET¹¤×÷Ä£Ê½ÏÂ£¬ĞèÒªÒ»´ÎĞÔ½«Êı¾İ¶ÁÍê
-//process_read ÒÀÀµ read_once Ìá¹©µÄÊı¾İ£ºread_once ½«Êı¾İ´Ó socket ÖĞ¶ÁÈ¡µ½»º³åÇø£¬È»ºó process_read ÔÚ»º³åÇøÖĞ½âÎöÊı¾İ¡£
-//read_once Ö»¸ºÔğÊı¾İ¶ÁÈ¡£¬¶ø process_read ¸ºÔğÊı¾İ½âÎö,ºóÕß¿ÉÒÔÕæÕı×öµ½Êı¾İ¶ÁÈ¡µÄÀ¹½Ø
+//å¾ªç¯è¯»å–å®¢æˆ·æ•°æ®ï¼Œç›´åˆ°æ— æ•°æ®å¯è¯»æˆ–å¯¹æ–¹å…³é—­è¿æ¥
+//éé˜»å¡ETå·¥ä½œæ¨¡å¼ä¸‹ï¼Œéœ€è¦ä¸€æ¬¡æ€§å°†æ•°æ®è¯»å®Œ
+//process_read ä¾èµ– read_once æä¾›çš„æ•°æ®ï¼šread_once å°†æ•°æ®ä» socket ä¸­è¯»å–åˆ°ç¼“å†²åŒºï¼Œç„¶å process_read åœ¨ç¼“å†²åŒºä¸­è§£ææ•°æ®ã€‚
+//read_once åªè´Ÿè´£æ•°æ®è¯»å–ï¼Œè€Œ process_read è´Ÿè´£æ•°æ®è§£æ,åè€…å¯ä»¥çœŸæ­£åšåˆ°æ•°æ®è¯»å–çš„æ‹¦æˆª
 bool http_conn::read_once()
 {
     if(m_read_idx>=READ_BUFFER_SIZE)
         return false;
     int bytes_read = 0;
 
-    //LT¶ÁÈ¡Êı¾İ(Ë®Æ½´¥·¢)
+    //LTè¯»å–æ•°æ®(æ°´å¹³è§¦å‘)
     if(m_TRIGMode==0)
     {
         bytes_read=recv(m_sockfd,m_read_buf+m_read_idx,READ_BUFFER_SIZE-m_read_idx,0);
@@ -257,20 +257,20 @@ bool http_conn::read_once()
             return false;
         return true;
     }
-    //ET¶ÁÈ¡Êı¾İ
+    //ETè¯»å–æ•°æ®
     else{
-        //ÓÉÓÚÕâ¸öÊÇĞèÒªÒ»´ÎĞÔ¶ÁÈ¡ÍêÊı¾İµÄ£¬¹ÌÈ»ÓĞÑ­»·etÄ£Ê½ºÍ·ÇÑ­»·etÄ£Ê½£¬
+        //ç”±äºè¿™ä¸ªæ˜¯éœ€è¦ä¸€æ¬¡æ€§è¯»å–å®Œæ•°æ®çš„ï¼Œå›ºç„¶æœ‰å¾ªç¯etæ¨¡å¼å’Œéå¾ªç¯etæ¨¡å¼ï¼Œ
         
         while(true)
         {
             bytes_read = recv(m_sockfd, m_read_buf + m_read_idx, READ_BUFFER_SIZE - m_read_idx, 0);
             if(bytes_read==-1)
             {
-                if(errno=EAGAIN || errno==EWOULDBLOCK) //ËµÃ÷ºóÃæÃ»ÓĞÊı¾İÁË£¬¹ÌÈ»ÍË³öÑ­»·
+                if(errno==EAGAIN || errno==EWOULDBLOCK) //è¯´æ˜åé¢æ²¡æœ‰æ•°æ®äº†ï¼Œå›ºç„¶é€€å‡ºå¾ªç¯
                     break;
-                return false;  //return falseËµÃ÷ÄÚ²¿³ö´íÁË
+                return false;  //return falseè¯´æ˜å†…éƒ¨å‡ºé”™äº†
             }
-            else if(bytes_read==0) //ËµÃ÷¸ù±¾¾ÍÃ»ÓĞ¶ÁµÄÄÚÈİ
+            else if(bytes_read==0) //è¯´æ˜æ ¹æœ¬å°±æ²¡æœ‰è¯»çš„å†…å®¹
             {
                 return false;
             }
@@ -282,12 +282,12 @@ bool http_conn::read_once()
 
 }
 
-//½âÎöhttpÇëÇóĞĞ£¬»ñµÃÇëÇó·½·¨£¬Ä¿±êurlÒÔ¼°°æ±¾ºÅ
-//ÕâÀï½âÎöµÄÄÚÈİÖ÷Òª·ÅÖÃµ½ÁËÀàµÄ³ÉÔ±ÏÈ´¢´æÆğÀ´ÁË£¬È»ºóºóÃæ»áÓÃµ½
-//ÇëÇóĞĞµÄÒâË¼ÏêÇé¿´ÓïÈ¸±Ê¼Ç
+//è§£æhttpè¯·æ±‚è¡Œï¼Œè·å¾—è¯·æ±‚æ–¹æ³•ï¼Œç›®æ ‡urlä»¥åŠç‰ˆæœ¬å·
+//è¿™é‡Œè§£æçš„å†…å®¹ä¸»è¦æ”¾ç½®åˆ°äº†ç±»çš„æˆå‘˜å…ˆå‚¨å­˜èµ·æ¥äº†ï¼Œç„¶ååé¢ä¼šç”¨åˆ°
+//è¯·æ±‚è¡Œçš„æ„æ€è¯¦æƒ…çœ‹è¯­é›€ç¬”è®°
 http_conn::HTTP_CODE    http_conn::parse_request_line(char* text)
 {
-    m_url=strpbrk(text," \t"); //·µ»Ø³öÏÖÔÚÕâ¸öµÚ¶ş¸ö×Ö·û´®¼¯ºÏÖĞµÄµÚÒ»¸öÊôÓÚ×Ö·û´®1µÄÏÂ±êµÄºóÃæµÄÄÚÈİ
+    m_url=strpbrk(text," \t"); //è¿”å›å‡ºç°åœ¨è¿™ä¸ªç¬¬äºŒä¸ªå­—ç¬¦ä¸²é›†åˆä¸­çš„ç¬¬ä¸€ä¸ªå±äºå­—ç¬¦ä¸²1çš„ä¸‹æ ‡çš„åé¢çš„å†…å®¹
     if(!m_url)
     {   
         return BAD_REQUEST;
@@ -295,19 +295,19 @@ http_conn::HTTP_CODE    http_conn::parse_request_line(char* text)
     *m_url++='\0';
     char * method=text;
 
-    if(strcasecmp(method,"GET")==0) //ÓÃÓÚ±È½ÏµÄº¯Êı
+    if(strcasecmp(method,"GET")==0) //ç”¨äºæ¯”è¾ƒçš„å‡½æ•°
         m_method=GET;
     else if(strcasecmp(method,"POST")==0)
     {
         m_method=POST;
-        cgi=1; //Õâ¸öcgiÊÇÓÃÀ´¸ÉÂïµÄ£¿ÊÇ·ñÆôÓÃµÄpost
+        cgi=1; //è¿™ä¸ªcgiæ˜¯ç”¨æ¥å¹²å˜›çš„ï¼Ÿæ˜¯å¦å¯ç”¨çš„post
     }
     else {
      
-        return BAD_REQUEST; ///Èç¹û¶¼Ã»ÓĞÕâÁ½¸öÇëÇó£¬Õâ¸öÏîÄ¿ËÆºõÖ»´¦ÀíÁËgetºÍpost
+        return BAD_REQUEST; ///å¦‚æœéƒ½æ²¡æœ‰è¿™ä¸¤ä¸ªè¯·æ±‚ï¼Œè¿™ä¸ªé¡¹ç›®ä¼¼ä¹åªå¤„ç†äº†getå’Œpost
     }
 
-    m_url+=strspn(m_url," \t" );  //¾ßÌå¿´ÓïÈ¸
+    m_url+=strspn(m_url," \t" );  //å…·ä½“çœ‹è¯­é›€
     
 
 
@@ -320,16 +320,16 @@ http_conn::HTTP_CODE    http_conn::parse_request_line(char* text)
     
     m_version += strspn(m_version, " \t");
 
-    if (strcasecmp(m_version, "HTTP/1.1") != 0) //Èç¹û²»ÏàµÈ
+    if (strcasecmp(m_version, "HTTP/1.1") != 0) //å¦‚æœä¸ç›¸ç­‰
     {
    
         return HTTP_CODE::BAD_REQUEST;
     }
 
-    if(strncasecmp(m_url,"http://",7)==0) //ÅĞ¶ÏÁ½¸ö×Ö·û´®µÄÇ°7¸ö×Ö·ûÊÇ·ñÏàµÈ
+    if(strncasecmp(m_url,"http://",7)==0) //åˆ¤æ–­ä¸¤ä¸ªå­—ç¬¦ä¸²çš„å‰7ä¸ªå­—ç¬¦æ˜¯å¦ç›¸ç­‰
     {
         m_url+=7;
-        m_url=strchr(m_url,'/'); //¿ÉÄÜÕâ¸öm_urlµÄhttp://ÕâÀïÒÑ¾­Ã»ÓÃÁË£¬¹ÌÈ»ÍùºóÁË£¬ÕâÑù±È½ÏºÃºóÃæµÄÅĞ¶Ï
+        m_url=strchr(m_url,'/'); //å¯èƒ½è¿™ä¸ªm_urlçš„http://è¿™é‡Œå·²ç»æ²¡ç”¨äº†ï¼Œå›ºç„¶å¾€åäº†ï¼Œè¿™æ ·æ¯”è¾ƒå¥½åé¢çš„åˆ¤æ–­
     }
 
 
@@ -339,19 +339,19 @@ http_conn::HTTP_CODE    http_conn::parse_request_line(char* text)
         m_url = strchr(m_url, '/');
     }
 
-    if(!m_url || m_url[0]!='/' ) //ËµÃ÷³öÏÖÁË´íÎóÁË£¬¿ÉÄÜºóÃæÃ»ÓĞÄÚÈİÁË£¬ËùÒÔÃ»ÓĞ½ØÈ¡µ½'/'
+    if(!m_url || m_url[0]!='/' ) //è¯´æ˜å‡ºç°äº†é”™è¯¯äº†ï¼Œå¯èƒ½åé¢æ²¡æœ‰å†…å®¹äº†ï¼Œæ‰€ä»¥æ²¡æœ‰æˆªå–åˆ°'/'
     {
         return BAD_REQUEST;
     }
-    //µ±urlÎª/Ê±£¬ÏÔÊ¾ÅĞ¶Ï½çÃæ         ÎªÊ²Ã´´ËÊ±Òª
+    //å½“urlä¸º/æ—¶ï¼Œæ˜¾ç¤ºåˆ¤æ–­ç•Œé¢         ä¸ºä»€ä¹ˆæ­¤æ—¶è¦
     if(strlen(m_url)==1)
         strcat(m_url,"judge.html");
     m_check_state= CHECK_STATE_HEADER;
     return NO_REQUEST;
 }
 
-//½âÎöhttpÇëÇóµÄÒ»¸öÍ·²¿ĞÅÏ¢(ÖğĞĞ½âÎö)
-//ÕâÀïµÄÄÚÈİ»á±»Ñ­»·µ÷ÓÃ
+//è§£æhttpè¯·æ±‚çš„ä¸€ä¸ªå¤´éƒ¨ä¿¡æ¯(é€è¡Œè§£æ)
+//è¿™é‡Œçš„å†…å®¹ä¼šè¢«å¾ªç¯è°ƒç”¨
 http_conn::HTTP_CODE  http_conn::parse_headers(char *text,bool &decide_proxy)
 {
     if(text[0]=='\0')
@@ -376,39 +376,39 @@ http_conn::HTTP_CODE  http_conn::parse_headers(char *text,bool &decide_proxy)
     {
         text+=15;
         text+=strspn(text," \t");
-        m_content_length=atol(text); //»ñÈ¡Õâ¸ö×Ö·û´®µÄ³¤¶È
+        m_content_length=atol(text); //è·å–è¿™ä¸ªå­—ç¬¦ä¸²çš„é•¿åº¦
     }
-    else if(strncasecmp(text,"Host:",5)==0 )   //±È½Ïtext×Ö·û´®Ç°5¸ö×Ö·û×é³ÉµÄ×Ö·û´®ÊÇ·ñÓëHost:Æ¥Åä
+    else if(strncasecmp(text,"Host:",5)==0 )   //æ¯”è¾ƒtextå­—ç¬¦ä¸²å‰5ä¸ªå­—ç¬¦ç»„æˆçš„å­—ç¬¦ä¸²æ˜¯å¦ä¸Host:åŒ¹é…
     {
         text+=5;
-        text+=strspn(text," \t"); //ÖØÖÃÕâÀïÎª¿ªÍ·
-        m_host=text;             //»ñÈ¡ÆäÄÚÈİ
+        text+=strspn(text," \t"); //é‡ç½®è¿™é‡Œä¸ºå¼€å¤´
+        m_host=text;             //è·å–å…¶å†…å®¹
     }
-    else if(strncasecmp(text,"X-Forwarded-By:",15)==0 ) //ËµÃ÷ÊÇnginx×ª·¢µÄ
+    else if(strncasecmp(text,"X-Forwarded-By:",15)==0 ) //è¯´æ˜æ˜¯nginxè½¬å‘çš„
     {
-        if(obj->ProxyType==1) //Èç¹ûÃ»ÓĞÑ¡Ôñnginx·´Ïò´úÀí£¬¹ÌÈ»½«nginx·ÃÎÊ¹ıÀ´µÄÊı¾İ½øĞĞÀ¹½Ø
+        if(obj->ProxyType==1) //å¦‚æœæ²¡æœ‰é€‰æ‹©nginxåå‘ä»£ç†ï¼Œå›ºç„¶å°†nginxè®¿é—®è¿‡æ¥çš„æ•°æ®è¿›è¡Œæ‹¦æˆª
         {
             return BAD_REQUEST;
         }
-        decide_proxy=false; //ÎªÁË×îºó½øĞĞÅĞ¶ÏµÄÊ±ºòÓÃµ½µÄ£¨ÅĞ¶ÏÓĞnginxµÄÊ±ºòÊÇ·ñÓÃÁË¶ÔÓ¦µÄÎŞnginxÄ£Ê½£©
+        decide_proxy=false; //ä¸ºäº†æœ€åè¿›è¡Œåˆ¤æ–­çš„æ—¶å€™ç”¨åˆ°çš„ï¼ˆåˆ¤æ–­æœ‰nginxçš„æ—¶å€™æ˜¯å¦ç”¨äº†å¯¹åº”çš„æ— nginxæ¨¡å¼ï¼‰
         
     }
     else
     {
-        LOG_INFO("oop!unknow header: %s", text); //Êä³öµ½ÈÕÖ¾ÏµÍ³£¬²é¿´Í·²¿ÓĞÊ²Ã´¶îÍâµÄ±êÊ¶£¬¿ÉÄÜÊÇ·¢ËÍ·½×Ô¼º¶à¶îÍâÔö¼ÓÁËÒ»Ğ©±êÊ¶
+        LOG_INFO("oop!unknow header: %s", text); //è¾“å‡ºåˆ°æ—¥å¿—ç³»ç»Ÿï¼ŒæŸ¥çœ‹å¤´éƒ¨æœ‰ä»€ä¹ˆé¢å¤–çš„æ ‡è¯†ï¼Œå¯èƒ½æ˜¯å‘é€æ–¹è‡ªå·±å¤šé¢å¤–å¢åŠ äº†ä¸€äº›æ ‡è¯†
     }
     
     return NO_REQUEST;
 }
 
 
-//ÅĞ¶ÏhttpÇëÇóÊÇ·ñ±»ÍêÕû¶ÁÈë
+//åˆ¤æ–­httpè¯·æ±‚æ˜¯å¦è¢«å®Œæ•´è¯»å…¥
 http_conn::HTTP_CODE http_conn::parse_content(char * text)
 {
     if(m_read_idx>=(m_content_length+m_checked_idx) )
     {
         text[m_content_length]='\0';
-        //postÇëÇóÖĞ×îºóÎªÊäÈëµÄÓÃ»§ÃûºÍÃÜÂë
+        //postè¯·æ±‚ä¸­æœ€åä¸ºè¾“å…¥çš„ç”¨æˆ·åå’Œå¯†ç 
         m_string=text;
         return GET_REQUEST;
     }
@@ -416,21 +416,21 @@ http_conn::HTTP_CODE http_conn::parse_content(char * text)
 }
 
 
-//process_read ÊÇ´¦Àí HTTP Ğ­ÒéµÄºËĞÄÂß¼­£¬½âÎöÇëÇó²¢ÅĞ¶ÏÈçºÎÏìÓ¦
-//process_read ÒÀÀµ read_once Ìá¹©µÄÊı¾İ
+//process_read æ˜¯å¤„ç† HTTP åè®®çš„æ ¸å¿ƒé€»è¾‘ï¼Œè§£æè¯·æ±‚å¹¶åˆ¤æ–­å¦‚ä½•å“åº”
+//process_read ä¾èµ– read_once æä¾›çš„æ•°æ®
 http_conn::HTTP_CODE  http_conn::process_read()
 {
     LINE_STATUS line_status=LINE_OK;
     HTTP_CODE ret=NO_REQUEST;
     char * text=0;
-    //ÅĞ¶ÏÇëÇóµÄÄÚÈİ
+    //åˆ¤æ–­è¯·æ±‚çš„å†…å®¹
     bool decide_proxy=true; 
-    //Ä¬ÈÏÊÇÃ»ÓÃnginx(Õâ¸ö±äÁ¿Ò»¶¨ÊÇĞèÒª¾Ö²¿±äÁ¿µÄ£¬¶ø²»ÊÇÈ«¾Ö±äÁ¿)
-    //·ñÔò³öÏÖÁËÈ«¾ÖµÄ´íÎó£¨¼´ÓĞÒ»¸önginxµÄÇëÇó¹ıÀ´£¬ÄÇÃ´´ËÊ±½«±äÁ¿ÉèÖÃÁËfalse£¬ÄÇÃ´ÔÙÀ´Ò»¸ö9006¶Ë¿Ú£¬¾Í»áÎóÈÏÎªÊÇnginxÇëÇó¹ıÀ´µÄ£©
+    //é»˜è®¤æ˜¯æ²¡ç”¨nginx(è¿™ä¸ªå˜é‡ä¸€å®šæ˜¯éœ€è¦å±€éƒ¨å˜é‡çš„ï¼Œè€Œä¸æ˜¯å…¨å±€å˜é‡)
+    //å¦åˆ™å‡ºç°äº†å…¨å±€çš„é”™è¯¯ï¼ˆå³æœ‰ä¸€ä¸ªnginxçš„è¯·æ±‚è¿‡æ¥ï¼Œé‚£ä¹ˆæ­¤æ—¶å°†å˜é‡è®¾ç½®äº†falseï¼Œé‚£ä¹ˆå†æ¥ä¸€ä¸ª9006ç«¯å£ï¼Œå°±ä¼šè¯¯è®¤ä¸ºæ˜¯nginxè¯·æ±‚è¿‡æ¥çš„ï¼‰
 
-    //Õâ¸öÑ­»·Ò»¿ªÊ¼Ä¬ÈÏÊÇ½øÈë ||ÓÒ±ßµÄÄÇ¸ö ( (line_status=parse_line() )==LINE_OK£¬ºóÃæÅªÍêÖ®ºó¾Í»á¿ªÊ¼ÇëÇóÍ·ÒÔ¼°ÇëÇóÌåµÄ´¦ÀíÁË
+    //è¿™ä¸ªå¾ªç¯ä¸€å¼€å§‹é»˜è®¤æ˜¯è¿›å…¥ ||å³è¾¹çš„é‚£ä¸ª ( (line_status=parse_line() )==LINE_OKï¼Œåé¢å¼„å®Œä¹‹åå°±ä¼šå¼€å§‹è¯·æ±‚å¤´ä»¥åŠè¯·æ±‚ä½“çš„å¤„ç†äº†
     while( (m_check_state==CHECK_STATE_CONTENT &&line_status==LINE_OK)
-          || ( (line_status=parse_line() )==LINE_OK) ) //·ÖÎöµ±Ç°ĞĞ×´Ì¬ÊÇ·ñºÍ´ËÊ±ÉèÖÃµÄline_status×´Ì¬Ò»ÖÂ
+          || ( (line_status=parse_line() )==LINE_OK) ) //åˆ†æå½“å‰è¡ŒçŠ¶æ€æ˜¯å¦å’Œæ­¤æ—¶è®¾ç½®çš„line_statusçŠ¶æ€ä¸€è‡´
     {
         text=get_line();
 
@@ -458,13 +458,13 @@ http_conn::HTTP_CODE  http_conn::process_read()
             case CHECK_STATE_CONTENT :
             {
                 ret=parse_content(text);
-                if(ret==GET_REQUEST) //ËµÃ÷ÊÇÒ»¸öÍêÕûµÄGETÇëÇó
+                if(ret==GET_REQUEST) //è¯´æ˜æ˜¯ä¸€ä¸ªå®Œæ•´çš„GETè¯·æ±‚
                     return do_request(decide_proxy);
                 line_status=LINE_OPEN;
                 break;
             }
             default:
-                return INTERNAL_ERROR; //·şÎñÆ÷ÄÚ²¿´íÎó
+                return INTERNAL_ERROR; //æœåŠ¡å™¨å†…éƒ¨é”™è¯¯
 
         }
 
@@ -483,8 +483,8 @@ http_conn::HTTP_CODE  http_conn::process_read()
 http_conn::HTTP_CODE http_conn::do_request(bool & decide_proxy)
 {
 
-    if(decide_proxy==false){ //±íÊ¾ÁËÓÃnginx£¬ÄÇÃ´²é¿´objÊÇ·ñÎª1(1´ú±íÃ»ÓĞÓÃ)
-        if(obj->ProxyType==1) //¹ÌÈ»Ã¬¶Ü
+    if(decide_proxy==false){ //è¡¨ç¤ºäº†ç”¨nginxï¼Œé‚£ä¹ˆæŸ¥çœ‹objæ˜¯å¦ä¸º1(1ä»£è¡¨æ²¡æœ‰ç”¨)
+        if(obj->ProxyType==1) //å›ºç„¶çŸ›ç›¾
             return BAD_REQUEST;
     }else {
         if(obj->ProxyType==0){
@@ -492,23 +492,23 @@ http_conn::HTTP_CODE http_conn::do_request(bool & decide_proxy)
         }
     }
 
-    strcpy(m_real_file,doc_root); //½«ÎÄ¼şµÄ¸ùÄ¿Â¼£¬È»ºó¸³Öµµ½m_real_fileÕâÀï
+    strcpy(m_real_file,doc_root); //å°†æ–‡ä»¶çš„æ ¹ç›®å½•ï¼Œç„¶åèµ‹å€¼åˆ°m_real_fileè¿™é‡Œ
     int len=strlen(doc_root);
-    const char * p=strrchr(m_url,'/'); //ÀïÃæµÄÖµ²»ÄÜ±ä,²éÕÒ'/'µÚÒ»´Î³öÏÖµÄÎ»ÖÃ
+    const char * p=strrchr(m_url,'/'); //é‡Œé¢çš„å€¼ä¸èƒ½å˜,æŸ¥æ‰¾'/'ç¬¬ä¸€æ¬¡å‡ºç°çš„ä½ç½®
 
-    //´¦Àícgi£¬ÅĞ¶ÏÊÇÄÄÖÖÇëÇó·½Ê½
+    //å¤„ç†cgiï¼Œåˆ¤æ–­æ˜¯å“ªç§è¯·æ±‚æ–¹å¼
     if(cgi==1&&(*(p+1)=='2' || *(p+1)=='3' ) )
     {
-        //¸ù¾İ±êÖ¾ÅĞ¶ÏÊÇµÇÂ¼¼ì²â»¹ÊÇ×¢²á¼ì²â
+        //æ ¹æ®æ ‡å¿—åˆ¤æ–­æ˜¯ç™»å½•æ£€æµ‹è¿˜æ˜¯æ³¨å†Œæ£€æµ‹
         char flag=m_url[1];
         char *m_url_real=(char *)malloc(sizeof(char) *200);
         strcpy(m_url_real, "/");
-        strcat(m_url_real,m_url+2); //½«m_url+2ºóÃæµÄ×Ö·û´®Ìí¼Óµ½m_url_realÖĞ
+        strcat(m_url_real,m_url+2); //å°†m_url+2åé¢çš„å­—ç¬¦ä¸²æ·»åŠ åˆ°m_url_realä¸­
         strncpy(m_real_file+len,m_url_real,FILENAME_LEN-len-1); 
-        //½«m_url_realµÄ×Ö·û´®¸´ÖÆÇ°µÚÈı¸ö²ÎÊıÈ»ºó¸øµ½µÚÒ»¸ö×Ö·û´®ÖĞ
-        free(m_url_real); //ÊÍ·Å²Ù×÷
+        //å°†m_url_realçš„å­—ç¬¦ä¸²å¤åˆ¶å‰ç¬¬ä¸‰ä¸ªå‚æ•°ç„¶åç»™åˆ°ç¬¬ä¸€ä¸ªå­—ç¬¦ä¸²ä¸­
+        free(m_url_real); //é‡Šæ”¾æ“ä½œ
     
-      //½«ÓÃ»§ÃûºÍÃÜÂëÌáÈ¡³öÀ´
+      //å°†ç”¨æˆ·åå’Œå¯†ç æå–å‡ºæ¥
     char name[100],password[100];
     
     {
@@ -524,8 +524,8 @@ http_conn::HTTP_CODE http_conn::do_request(bool & decide_proxy)
     }
     if(*(p+1)=='3')
     {
-        //Èç¹ûÊÇ×¢²á£¬ÏÈ¼ì²âÊı¾İ¿âÖĞÊÇ·ñÓĞÖØÃûµÄ
-        //Ã»ÓĞÖØÃû²ÅÔÊĞí¼Ó
+        //å¦‚æœæ˜¯æ³¨å†Œï¼Œå…ˆæ£€æµ‹æ•°æ®åº“ä¸­æ˜¯å¦æœ‰é‡åçš„
+        //æ²¡æœ‰é‡åæ‰å…è®¸åŠ 
         char * sql_insert=(char*)malloc(sizeof(char)*200);
         strcpy(sql_insert, "INSERT INTO user(username, passwd) VALUES(");
         strcat(sql_insert, "'");
@@ -533,24 +533,24 @@ http_conn::HTTP_CODE http_conn::do_request(bool & decide_proxy)
         strcat(sql_insert, "', '");
         strcat(sql_insert, password);
         strcat(sql_insert, "')");
-        //ÉÏÃæÕâÒ»¸öÖ÷ÒªÊÇÆ´½ÓÒ»¸ösqlÓï¾ä¶øÒÑ
+        //ä¸Šé¢è¿™ä¸€ä¸ªä¸»è¦æ˜¯æ‹¼æ¥ä¸€ä¸ªsqlè¯­å¥è€Œå·²
         BackNode<std::string> back;
         back=users.find(name);
-        if(back.index==f_end) //ËµÃ÷Ã»ÓĞÕÒµ½,ÓÃ»§±íÎ¬»¤ÔÚÒ»¸ömapÖĞ
+        if(back.index==f_end) //è¯´æ˜æ²¡æœ‰æ‰¾åˆ°,ç”¨æˆ·è¡¨ç»´æŠ¤åœ¨ä¸€ä¸ªmapä¸­
         {
             m_lock.lock();
-            int res=mysql_query(mysql,sql_insert); //·ÃÎÊÁ¬½ÓµÄÊı¾İ¿âÀïÃæÊÇ·ñÓĞ¼ÇÂ¼
+            int res=mysql_query(mysql,sql_insert); //è®¿é—®è¿æ¥çš„æ•°æ®åº“é‡Œé¢æ˜¯å¦æœ‰è®°å½•
             users.push(name,password);
             m_lock.unlock();
-            if(!res) //ËµÃ÷Ã»ÓĞ£¬ÄÇÃ´Ö±½ÓÈÃËûÅªµ½µÇÂ¼½çÃæ£¬ÏÈ½øĞĞÒ»¸ö¸³Öµ
+            if(!res) //è¯´æ˜æ²¡æœ‰ï¼Œé‚£ä¹ˆç›´æ¥è®©ä»–å¼„åˆ°ç™»å½•ç•Œé¢ï¼Œå…ˆè¿›è¡Œä¸€ä¸ªèµ‹å€¼
                 strcpy(m_url,"/log.html");
             else 
                 strcpy(m_url, "/registerError.html");
         }
         else 
             strcpy(m_url, "/registerError.html");
-        //Èç¹ûÊÇµÇÂ¼£¬Ö±½ÓÅĞ¶Ï
-        //Èôä¯ÀÀÆ÷¶ËÊäÈëµÄÓÃ»§ÃûºÍÃÜÂëÔÚ±íÖĞ¿ÉÒÔ²éÕÒµ½£¬·µ»Ø1£¬·ñÔò·µ»Ø0
+        //å¦‚æœæ˜¯ç™»å½•ï¼Œç›´æ¥åˆ¤æ–­
+        //è‹¥æµè§ˆå™¨ç«¯è¾“å…¥çš„ç”¨æˆ·åå’Œå¯†ç åœ¨è¡¨ä¸­å¯ä»¥æŸ¥æ‰¾åˆ°ï¼Œè¿”å›1ï¼Œå¦åˆ™è¿”å›0
     }
       else if (*(p + 1) == '2')
       {
@@ -564,8 +564,8 @@ http_conn::HTTP_CODE http_conn::do_request(bool & decide_proxy)
       }
 
     }
-//ÉÏÃæµÄ2»òÕß3´ú±íµÇÂ¼ÒÔ¼°×¢²á
-//ÏÂÃæµÄ¾ÍÊÇÆäËû×´Ì¬µÄ½çÃæÁË
+//ä¸Šé¢çš„2æˆ–è€…3ä»£è¡¨ç™»å½•ä»¥åŠæ³¨å†Œ
+//ä¸‹é¢çš„å°±æ˜¯å…¶ä»–çŠ¶æ€çš„ç•Œé¢äº†
 
     if(*(p+1)=='0')
     {
@@ -609,28 +609,28 @@ http_conn::HTTP_CODE http_conn::do_request(bool & decide_proxy)
     else 
         strncpy(m_real_file+len,m_url,FILENAME_LEN-len-1);
 
-    if(stat(m_real_file,&m_file_stat)<0)  //´ÓÀïÃæ»ñÈ¡ÎÄ¼şµ±Ç°µÄĞÅÏ¢
+    if(stat(m_real_file,&m_file_stat)<0)  //ä»é‡Œé¢è·å–æ–‡ä»¶å½“å‰çš„ä¿¡æ¯
     {
-        return NO_RESOURCE; //Ã»ÓĞ×ÊÔ´
+        return NO_RESOURCE; //æ²¡æœ‰èµ„æº
     }
     if(!(m_file_stat.st_mode)&S_IROTH) {
-        return FORBIDDEN_REQUEST; //½ûÖ¹ÇëÇóµÄ×´Ì¬Âë
+        return FORBIDDEN_REQUEST; //ç¦æ­¢è¯·æ±‚çš„çŠ¶æ€ç 
     }
 
     if(S_ISDIR(m_file_stat.st_mode) )
         return BAD_REQUEST;
 
-    int fd=open(m_real_file,O_RDONLY); //Ö»¶ÁµÄ·½Ê½´ò¿ªÕâ¸öÎÄ¼ş£¬È»ºóÓÉÓÚÔÚlinuxÏÂ£¬·µ»ØÒ»¸öÎÄ¼şÃèÊö·û£¨Õâ¸öÎÄ¼ş¾ÍÊÇÒª·¢ËÍµÄÎÄ¼şÁË£©
+    int fd=open(m_real_file,O_RDONLY); //åªè¯»çš„æ–¹å¼æ‰“å¼€è¿™ä¸ªæ–‡ä»¶ï¼Œç„¶åç”±äºåœ¨linuxä¸‹ï¼Œè¿”å›ä¸€ä¸ªæ–‡ä»¶æè¿°ç¬¦ï¼ˆè¿™ä¸ªæ–‡ä»¶å°±æ˜¯è¦å‘é€çš„æ–‡ä»¶äº†ï¼‰
     
-    m_file_address=(char*)mmap(0,m_file_stat.st_size,PROT_READ,MAP_PRIVATE,fd,0); //×öÓ³Éä£¬¾ßÌå¿´ÓïÈ¸(Õâ¸öºÍÒª´«ÊäµÄÊÓÆµÎÄ¼şÏà¹ØÁªµÄ)(ËüÒ²¿ÉÒÔ×öµ½ÄÚ´æ¹²Ïí)
-    //ÕâÀïÖ÷ÒªÊÇ½«Ò»¸öÆÕÍ¨ÎÄ¼şÓ³Éäµ½ÄÚ´æÖĞ£¬Í¨³£ÔÚĞèÒª¶ÔÎÄ¼ş½øĞĞÆµ·±¶ÁĞ´Ê±Ê¹ÓÃ
+    m_file_address=(char*)mmap(0,m_file_stat.st_size,PROT_READ,MAP_PRIVATE,fd,0); //åšæ˜ å°„ï¼Œå…·ä½“çœ‹è¯­é›€(è¿™ä¸ªå’Œè¦ä¼ è¾“çš„è§†é¢‘æ–‡ä»¶ç›¸å…³è”çš„)(å®ƒä¹Ÿå¯ä»¥åšåˆ°å†…å­˜å…±äº«)
+    //è¿™é‡Œä¸»è¦æ˜¯å°†ä¸€ä¸ªæ™®é€šæ–‡ä»¶æ˜ å°„åˆ°å†…å­˜ä¸­ï¼Œé€šå¸¸åœ¨éœ€è¦å¯¹æ–‡ä»¶è¿›è¡Œé¢‘ç¹è¯»å†™æ—¶ä½¿ç”¨
     close(fd);
     
     return FILE_REQUEST;
 
 }
 
-//½â³ıÉÏÃæº¯Êı×îºóËù×öµÄÄÇ¸öÓ³Éä
+//è§£é™¤ä¸Šé¢å‡½æ•°æœ€åæ‰€åšçš„é‚£ä¸ªæ˜ å°„
 void http_conn::unmap()
 {
     if(m_file_address)
@@ -642,25 +642,25 @@ void http_conn::unmap()
 }
 
 
-//write Ôò¸ºÔğÊµ¼Ê½«Êı¾İ·¢ËÍ¸ø¿Í»§¶Ë£¬´¦Àí·¢ËÍÖĞµÄ´íÎó¡¢½ø¶È¸üĞÂµÈ²Ù×÷¡£
+//write åˆ™è´Ÿè´£å®é™…å°†æ•°æ®å‘é€ç»™å®¢æˆ·ç«¯ï¼Œå¤„ç†å‘é€ä¸­çš„é”™è¯¯ã€è¿›åº¦æ›´æ–°ç­‰æ“ä½œã€‚
 bool http_conn::write()
 {
     int temp=0;
-    if(bytes_to_send==0) //·¢ËÍ×Ö½ÚÊı==0
+    if(bytes_to_send==0) //å‘é€å­—èŠ‚æ•°==0
     {
-        modfd(m_epollfd,m_sockfd,EPOLLIN,m_TRIGMode); //ÖØÖÃepollº¯Êı
-        init(); //Õâ¸öÊÇ³õÊ¼»¯ĞÂµÄÁ¬½Ó,½«ºÜ¶àÖÃÎª0
+        modfd(m_epollfd,m_sockfd,EPOLLIN,m_TRIGMode); //é‡ç½®epollå‡½æ•°
+        init(); //è¿™ä¸ªæ˜¯åˆå§‹åŒ–æ–°çš„è¿æ¥,å°†å¾ˆå¤šç½®ä¸º0
         return true;
     }
 
     while(1)
     {
-        //ÒÉÎÊ£ºÈç¹ûµ±Ç°sockfd±»É¾³ıÁË£¬Õâ¸öº¯Êı»á³öÏÖ¶Î´íÎóÂğ£¿¿ÉÄÜ»á£¬¾ßÌåµÃµ÷ÊÔ
-        temp=writev(m_sockfd,m_iv,m_iv_count); //±íÊ¾Ğ´Èë³É¹¦µÄ×Ö½ÚÊı
+        //ç–‘é—®ï¼šå¦‚æœå½“å‰sockfdè¢«åˆ é™¤äº†ï¼Œè¿™ä¸ªå‡½æ•°ä¼šå‡ºç°æ®µé”™è¯¯å—ï¼Ÿå¯èƒ½ä¼šï¼Œå…·ä½“å¾—è°ƒè¯•
+        temp=writev(m_sockfd,m_iv,m_iv_count); //è¡¨ç¤ºå†™å…¥æˆåŠŸçš„å­—èŠ‚æ•°
 
-        if(temp<0) //ËµÃ÷Ğ´ÈëÊ§°Ü
+        if(temp<0) //è¯´æ˜å†™å…¥å¤±è´¥
         {
-            if(errno==EAGAIN) //ÕâÖÖ¿ÉÄÜ»¹Ã»ÓĞĞ´ÈëµÄÈ¨Á¦£¬ÒòÎªÊÇ·Ç×èÈûio£¨µ«ÊÇËµÊÇÕâÃ´Ëµ£¬ÎÒ»¹ÊÇ²»Ì«¶®£©
+            if(errno==EAGAIN) //è¿™ç§å¯èƒ½è¿˜æ²¡æœ‰å†™å…¥çš„æƒåŠ›ï¼Œå› ä¸ºæ˜¯éé˜»å¡ioï¼ˆä½†æ˜¯è¯´æ˜¯è¿™ä¹ˆè¯´ï¼Œæˆ‘è¿˜æ˜¯ä¸å¤ªæ‡‚ï¼‰
             {
                 modfd(m_epollfd, m_sockfd, EPOLLOUT, m_TRIGMode);
                 return true;
@@ -668,9 +668,9 @@ bool http_conn::write()
             unmap();
             return false;
         }
-        bytes_have_send += temp; //Ğ´ÈëµÄ¸öÊı+
-        bytes_to_send -= temp;   //´ıĞ´µÄ¸öÊı-
-        if(bytes_have_send>=m_iv[0].iov_len) //ËµÃ÷µÚÒ»¸öµÄÊı¾İ·¢ËÍÍêÁË£¬È»ºó¿ªÊ¼¶ÔµÚ¶ş¸ö½øĞĞ²Ù×÷
+        bytes_have_send += temp; //å†™å…¥çš„ä¸ªæ•°+
+        bytes_to_send -= temp;   //å¾…å†™çš„ä¸ªæ•°-
+        if(bytes_have_send>=m_iv[0].iov_len) //è¯´æ˜ç¬¬ä¸€ä¸ªçš„æ•°æ®å‘é€å®Œäº†ï¼Œç„¶åå¼€å§‹å¯¹ç¬¬äºŒä¸ªè¿›è¡Œæ“ä½œ
         {
             m_iv[0].iov_len=0;
             m_iv[1].iov_base=m_file_address+(bytes_have_send-m_write_idx);
@@ -689,10 +689,10 @@ bool http_conn::write()
             modfd(m_epollfd, m_sockfd, EPOLLIN, m_TRIGMode);
 
             if(m_linger) 
-            //Õâ¸öÊÇÊ²Ã´£¿²»¶®
-            //Õâ¶Î´úÂëÖĞÓĞÒ»´¦×¢ÊÍËµµ½ m_linger£¬ÕâÊÇÒ»¸ö¿ØÖÆÁ¬½Ó×´Ì¬µÄ±äÁ¿£¬Èç¹ûÉèÖÃÎª true£¬ËµÃ÷ÊÇÏë¼ÌĞøÁ¬½ÓµÄ
-            //Èç¹ûÉèÖÃÎªfalse£¬ÄÇÃ´½«»á¹Ø±ÕÁ¬½Ó
-                //±íÊ¾ÔÚ¹Ø±ÕÁ¬½ÓÊ±µÈ´ıÒ»¶ÎÊ±¼äÒÔÈ·±£Êı¾İ·¢ËÍÍê±Ï£¬¶ø²»ÊÇÁ¢¼´¹Ø±ÕÁ¬½Ó¡£¼´½«ËùÓĞÄÚÈİ½øĞĞÒ»¸öÖØĞÂ³õÊ¼µÄ¹ı³Ì
+            //è¿™ä¸ªæ˜¯ä»€ä¹ˆï¼Ÿä¸æ‡‚
+            //è¿™æ®µä»£ç ä¸­æœ‰ä¸€å¤„æ³¨é‡Šè¯´åˆ° m_lingerï¼Œè¿™æ˜¯ä¸€ä¸ªæ§åˆ¶è¿æ¥çŠ¶æ€çš„å˜é‡ï¼Œå¦‚æœè®¾ç½®ä¸º trueï¼Œè¯´æ˜æ˜¯æƒ³ç»§ç»­è¿æ¥çš„
+            //å¦‚æœè®¾ç½®ä¸ºfalseï¼Œé‚£ä¹ˆå°†ä¼šå…³é—­è¿æ¥
+                //è¡¨ç¤ºåœ¨å…³é—­è¿æ¥æ—¶ç­‰å¾…ä¸€æ®µæ—¶é—´ä»¥ç¡®ä¿æ•°æ®å‘é€å®Œæ¯•ï¼Œè€Œä¸æ˜¯ç«‹å³å…³é—­è¿æ¥ã€‚å³å°†æ‰€æœ‰å†…å®¹è¿›è¡Œä¸€ä¸ªé‡æ–°åˆå§‹çš„è¿‡ç¨‹
             {
                 init();
                 return true;
@@ -707,15 +707,15 @@ bool http_conn::write()
 
 }
 
-//Õâ¸ö²»ÊÇÏìÓ¦²¿·Ö£¬Õâ¸öÊÇÓÃÓÚÊä³öµ½ÈÕÖ¾ÉÏµÄ£¬Í¨¹ıÁ÷£¬Êä³öµ½ÈÕÖ¾ÊÇÍ¨¹ıÌ×½Ó×Öº¯ÊıÀ´Êä³öµÄwrite°É
+//è¿™ä¸ªä¸æ˜¯å“åº”éƒ¨åˆ†ï¼Œè¿™ä¸ªæ˜¯ç”¨äºè¾“å‡ºåˆ°æ—¥å¿—ä¸Šçš„ï¼Œé€šè¿‡æµï¼Œè¾“å‡ºåˆ°æ—¥å¿—æ˜¯é€šè¿‡å¥—æ¥å­—å‡½æ•°æ¥è¾“å‡ºçš„writeå§
 bool http_conn::add_response(const char * format,...)
 {
     if(m_write_idx>=WRITE_BUFFER_SIZE)
         return false;   
     va_list arg_list;
-    va_start(arg_list,format);   //Õâ¸öÊÇ¿É±ä²ÎÊıµÄÄÇÉ¶µÄ¿ªÍ·£¬¿ÉÒÔ±£Ö¤¿É±ä²ÎÊı²úÉúÒ»Ğ©Î´¶¨ÒåµÄĞĞÎª
-    int len=vsnprintf(m_write_buf+m_write_idx,WRITE_BUFFER_SIZE-1-m_write_idx,format,arg_list); //Ö§³Ö¿É±ä²ÎÊı£¬½«Ò»Ğ©ÄÚÈİÖ±½Ó·ÅÈëµ½m_write_bufÖĞ
-    //m_write_idxÎªÆ«ÒÆÁ¿´óĞ¡
+    va_start(arg_list,format);   //è¿™ä¸ªæ˜¯å¯å˜å‚æ•°çš„é‚£å•¥çš„å¼€å¤´ï¼Œå¯ä»¥ä¿è¯å¯å˜å‚æ•°äº§ç”Ÿä¸€äº›æœªå®šä¹‰çš„è¡Œä¸º
+    int len=vsnprintf(m_write_buf+m_write_idx,WRITE_BUFFER_SIZE-1-m_write_idx,format,arg_list); //æ”¯æŒå¯å˜å‚æ•°ï¼Œå°†ä¸€äº›å†…å®¹ç›´æ¥æ”¾å…¥åˆ°m_write_bufä¸­
+    //m_write_idxä¸ºåç§»é‡å¤§å°
     if (len >= (WRITE_BUFFER_SIZE - 1 - m_write_idx))
     {
         va_end(arg_list);
@@ -724,7 +724,7 @@ bool http_conn::add_response(const char * format,...)
 
     m_write_idx+=len;
     va_end(arg_list);
-    LOG_INFO("request:%s ",m_write_buf); //½«¶ÔÓ¦ÄÚÈİ´òµ½Ò»¸öÈÕÖ¾ÖĞ£¬Õâ¸öÊÇ×îÖÕÄ¿µÄ
+    LOG_INFO("request:%s ",m_write_buf); //å°†å¯¹åº”å†…å®¹æ‰“åˆ°ä¸€ä¸ªæ—¥å¿—ä¸­ï¼Œè¿™ä¸ªæ˜¯æœ€ç»ˆç›®çš„
     return true;
 }
 
@@ -738,7 +738,7 @@ bool http_conn::add_headers(int content_len)
     return add_content_length(content_len)&&add_linger()&&add_blank_line();
 }
 
-bool http_conn::add_content_length(int content_len)     //½«Êı¾İ³¤¶È¸øÅª³öÀ´£¬½«Æä³¤¶ÈÊä³öµ½ÈÕÖ¾ÉÏ
+bool http_conn::add_content_length(int content_len)     //å°†æ•°æ®é•¿åº¦ç»™å¼„å‡ºæ¥ï¼Œå°†å…¶é•¿åº¦è¾“å‡ºåˆ°æ—¥å¿—ä¸Š
 {
     return add_response("Content-Length:%d\r\n",content_len);
 }
@@ -751,10 +751,10 @@ bool http_conn::add_content_type()
 
 bool http_conn::add_linger()
 {
-    return add_response("Connection:%s\r\n", (m_linger == true) ? "keep-alive" : "close"); //½«ÆäÊÇ·ñÁ¬½Ó×´Ì¬·¢¸øµ½¶ÔÓ¦µÄÈÕÖ¾ÉÏ
+    return add_response("Connection:%s\r\n", (m_linger == true) ? "keep-alive" : "close"); //å°†å…¶æ˜¯å¦è¿æ¥çŠ¶æ€å‘ç»™åˆ°å¯¹åº”çš„æ—¥å¿—ä¸Š
 }
 
-bool http_conn::add_blank_line() //ÓÃÓÚ»»ĞĞµÄ
+bool http_conn::add_blank_line() //ç”¨äºæ¢è¡Œçš„
 {
     return add_response("%s", "\r\n");
 }
@@ -764,8 +764,8 @@ bool http_conn::add_content(const char * content)
     return add_response("%s",content);
 }
 
-//Õâ¸öº¯ÊıµÄÊä³öÊÇ½«ĞèÒª·¢ËÍµÄÏìÓ¦Êı¾İ×¼±¸ºÃ£¬²¢ÉèÖÃºÃ iovec ½á¹¹£¨m_iv£©ºÍ×Ü×Ö½ÚÊı (bytes_to_send)£¬ÒÔ±ãºóĞøÍ¨¹ı write º¯ÊıÊµ¼Ê·¢ËÍ¡£
-//Ö÷Òª¸ºÔğ¹¹½¨ HTTP ÏìÓ¦Êı¾İ£¬²¢×¼±¸ºÃÊı¾İ½á¹¹£¬¹©ºóĞø·¢ËÍÊ¹ÓÃ
+//è¿™ä¸ªå‡½æ•°çš„è¾“å‡ºæ˜¯å°†éœ€è¦å‘é€çš„å“åº”æ•°æ®å‡†å¤‡å¥½ï¼Œå¹¶è®¾ç½®å¥½ iovec ç»“æ„ï¼ˆm_ivï¼‰å’Œæ€»å­—èŠ‚æ•° (bytes_to_send)ï¼Œä»¥ä¾¿åç»­é€šè¿‡ write å‡½æ•°å®é™…å‘é€ã€‚
+//ä¸»è¦è´Ÿè´£æ„å»º HTTP å“åº”æ•°æ®ï¼Œå¹¶å‡†å¤‡å¥½æ•°æ®ç»“æ„ï¼Œä¾›åç»­å‘é€ä½¿ç”¨
 bool http_conn::process_write(HTTP_CODE ret)
 {
     switch(ret)
@@ -797,14 +797,14 @@ bool http_conn::process_write(HTTP_CODE ret)
         case FILE_REQUEST:
         {
             add_status_line(200,ok_200_title);
-            if(m_file_stat.st_size!=0) //Ê×ÏÈ¼ì²éÎÄ¼ş´óĞ¡ÊÇ·ñÎª0
+            if(m_file_stat.st_size!=0) //é¦–å…ˆæ£€æŸ¥æ–‡ä»¶å¤§å°æ˜¯å¦ä¸º0
             {
                 add_headers(m_file_stat.st_size);
                 m_iv[0].iov_base=m_write_buf;
                 m_iv[0].iov_len=m_write_idx;
                 m_iv[1].iov_base=m_file_address;
                 m_iv[1].iov_len=m_file_stat.st_size;
-                m_iv_count=2; //±íÊ¾Òª·¢ËÍÁ½¸öÊı¾İ¿é
+                m_iv_count=2; //è¡¨ç¤ºè¦å‘é€ä¸¤ä¸ªæ•°æ®å—
                 bytes_to_send=m_write_idx+m_file_stat.st_size;
                 return true;
             }
